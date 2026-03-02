@@ -1,0 +1,89 @@
+---
+title: "Architecture Overview"
+description: "Two processes. One daemon. Zero bloat. Here's how NIOM is built — and why."
+---
+
+NIOM has an unusual architecture: a **hybrid daemon** that splits native OS access from AI intelligence into two cooperating processes. This isn't a wrapper around an LLM — it's an OS-level intelligence layer.
+
+## The two processes
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        NIOM Daemon                           │
+│                                                              │
+│  ┌─── Rust (Tauri) ──────────┐  ┌──── Node.js Sidecar ────┐ │
+│  │                           │  │                          │ │
+│  │  System tray icon         │  │  🧠 AI Gateway           │ │
+│  │  Global hotkeys           │  │  🔄 Agent engine         │ │
+│  │  Overlay window           │  │  ⚡ Background tasks     │ │
+│  │  Native notifications     │  │  🤲 All tools            │ │
+│  │  Sidecar lifecycle        │  │  🔍 Web search           │ │
+│  │                           │  │  🌐 MCP client           │ │
+│  │  That's it.               │  │  🖥️ Computer use         │ │
+│  │  ~200 lines of Rust.      │  │  💬 SSE streaming        │ │
+│  │                           │  │  🩺 Self-healing         │ │
+│  └───────────────────────────┘  └──────────────────────────┘ │
+│                                                              │
+│  ┌──── Frontend (React + Vite + Tailwind v4) ──────────────┐ │
+│  │  Tauri IPC → Rust (OS-native only)                      │ │
+│  │  HTTP/SSE  → Node.js (everything else)                  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Why split it this way?
+
+An earlier version of NIOM kept everything in Rust. It was 2,800 lines across 5 crates — and couldn't match what Node.js does in 120 lines:
+
+| Task | Rust (before) | Node.js (now) |
+|------|:---:|:---:|
+| File read/write | 60 lines | 2 lines |
+| Shell execution | 40 lines | 3 lines |
+| Web search | 105 lines (and broken) | 3 lines |
+| Intent classification | 440 lines | 15 lines |
+| Agent loop | 891 lines | 30 lines |
+| Model manager | 597 lines | 1 line |
+| **Total** | **~2,800 lines** | **~120 lines** |
+
+The TypeScript AI ecosystem (Vercel AI SDK, MCP SDK, etc.) is **10-100x more mature** than Rust for this. Moving intelligence to Node.js and keeping only OS-native operations in Rust gives the best of both worlds.
+
+## The three pillars
+
+NIOM's intelligence operates as a continuous loop:
+
+**Perception** → What's happening?
+- File watcher (`chokidar`) monitors your workspace for changes
+- Session tracking: which file you're focused on, recent files, access patterns
+- No keylogging. No screen capture for observation. Everything local.
+
+**Cognition** → What does it mean?
+- Intent analysis via structured output
+- 4-tier complexity routing (simple → standard → complex → long-running)
+- Multi-provider AI support (OpenAI, Anthropic, Google, Ollama)
+
+**Action** → Make it happen.
+- Agent engine with tool calling and evaluation
+- Self-healing via ToolHealthMonitor
+- MCP for universal tool orchestration
+
+## Data flow
+
+Here's what happens when you type something in the overlay:
+
+```
+You type in the overlay
+  → HTTP POST /run → Node.js sidecar
+    → Analyze intent (fast model, ~200ms)
+    → Route by complexity
+    → Execute with tools (capable model)
+    → Evaluate quality (fast model)
+    → SSE stream response back to the overlay
+```
+
+OS-level operations (hotkeys, tray, notifications) go through **Tauri IPC** → Rust. Everything else goes through **HTTP** → Node.js. Clean separation.
+
+## Privacy
+
+<Note>
+  **Local-first is non-negotiable.** All data lives on your machine at `~/.niom/`. Zero telemetry. Zero analytics. The only network calls are to your chosen LLM provider — and even that's optional (Ollama works fully offline).
+</Note>

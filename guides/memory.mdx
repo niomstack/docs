@@ -1,0 +1,85 @@
+---
+title: "Long-Term Memory"
+description: "NIOM remembers facts about you across sessions — your preferences, your projects, your patterns."
+---
+
+NIOM learns about you over time. As you chat, it extracts key facts — your name, preferred languages, current projects — and stores them encrypted in `~/.niom/memory/brain/`. These facts are injected into every conversation, so NIOM always has context about who you are.
+
+## How it works
+
+```
+You chat normally
+  → Every ~6 messages, NIOM auto-extracts facts
+    → Facts stored encrypted in brain/knowledge.enc
+      → Next conversation loads brain context into system prompt
+```
+
+The extraction happens **asynchronously** after a thread is saved — it doesn't slow down your conversation. NIOM uses the fast model (e.g., Groq Llama 3.3) to identify facts, keeping costs negligible.
+
+## What NIOM remembers
+
+NIOM's brain stores three types of information:
+
+| Type | Examples | How it learns |
+|:-----|:---------|:-------------|
+| **Facts** | "User's name is Arka", "Works on the NIOM project" | Auto-extracted from conversations |
+| **Preferences** | `language → TypeScript`, `style → concise` | Auto-extracted or manually set |
+| **Patterns** | Recurring workflows, common requests | Auto-detected over time |
+
+## Managing your memory
+
+### Settings UI
+
+Open **Settings → Memory** to:
+- View all stored facts and preferences
+- Add facts manually (e.g., "I prefer dark mode in all apps")
+- Add preferences (key → value pairs)
+- Remove individual facts
+- Clear all brain memory
+
+### API
+
+You can also manage memory programmatically:
+
+<CodeGroup>
+```bash View brain
+curl http://localhost:3001/memory/brain
+```
+
+```bash Add a fact
+curl -X POST http://localhost:3001/memory/brain/fact \
+  -H "Content-Type: application/json" \
+  -d '{"fact": "I prefer TypeScript over JavaScript"}'
+```
+
+```bash Set a preference
+curl -X POST http://localhost:3001/memory/brain/pref \
+  -H "Content-Type: application/json" \
+  -d '{"key": "editor", "value": "VS Code"}'
+```
+
+```bash Remove a fact
+curl -X DELETE http://localhost:3001/memory/brain/fact \
+  -H "Content-Type: application/json" \
+  -d '{"fact": "I prefer TypeScript over JavaScript"}'
+```
+
+```bash Clear all memory
+curl -X DELETE http://localhost:3001/memory/brain
+```
+</CodeGroup>
+
+## Privacy
+
+<Note>
+  Brain data is **encrypted at rest** with AES-256-GCM, just like conversations and tasks. It never leaves your machine. Facts are only extracted from your local conversations — nothing is sent to any external service beyond your chosen LLM provider.
+</Note>
+
+## How it improves NIOM
+
+With brain context, NIOM can:
+
+- **Skip repetitive questions** — it already knows your name, stack, and preferences
+- **Tailor responses** — if it knows you use TypeScript, it won't suggest Python solutions
+- **Build on past context** — "continue working on the NIOM project" just works
+- **Personalize tone** — matching your preferred communication style over time

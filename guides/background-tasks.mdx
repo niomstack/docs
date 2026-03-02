@@ -1,0 +1,100 @@
+---
+title: "Background Tasks"
+description: "Set it and forget it. NIOM runs tasks autonomously — and learns when to ask and when to just handle it."
+---
+
+What if your AI could work while you sleep? NIOM's background task system turns one-off requests into autonomous workflows that survive restarts, learn from your feedback, and eventually run without asking.
+
+## What you can automate
+
+<CardGroup cols={2}>
+  <Card title="One-shot research" icon="magnifying-glass">
+    "Research quantum computing deeply" — NIOM works in the background and notifies you when it's done.
+  </Card>
+  <Card title="Recurring content" icon="calendar">
+    "Write a blog post about AI every 2 days" — scheduled runs, each going through the full reasoning pipeline.
+  </Card>
+  <Card title="File monitoring" icon="eye">
+    "Watch my downloads folder and organize new files" — reacts to changes automatically.
+  </Card>
+  <Card title="Triggered actions" icon="bolt">
+    "When I push to main, summarize the changes" — waits for a condition, then executes.
+  </Card>
+</CardGroup>
+
+## How it works
+
+When NIOM detects a request that's long-running or recurring, it creates a background task instead of trying to do everything in one shot:
+
+```
+You: "Write a blog on AI efficiency every 2 days"
+
+NIOM:
+  1. Analyzes → complexity: long_running, schedule: every 2 days
+  2. Creates a background task
+  3. First run: researches → drafts → evaluates its own quality
+  4. Asks for your approval (the first few times)
+  5. After enough approvals → runs autonomously 🎓
+```
+
+## The approval graduation system
+
+This is what makes NIOM unique. **The agent learns when to ask and when to just handle it:**
+
+| Mode | What happens |
+|------|-------------|
+| **Always ask** | Every run waits for your approval before proceeding |
+| **First N** (default) | NIOM asks for approval on the first 3 runs. After that, it runs autonomously |
+| **Never ask** | Full autonomy from the start — use with caution |
+
+Your approval decisions (with optional notes) are stored in task memory. NIOM uses them to understand your preferences and improve future runs.
+
+## Task lifecycle
+
+Tasks are persistent — they survive overlay closes, sidecar restarts, even machine reboots:
+
+```
+draft → planned → scheduled → running → completed
+                      ↑           ↓
+                   resume       pause
+                      ↑           ↓
+                    paused ←──────┘
+```
+
+**Native notifications**: Task completions (✅), failures (❌), and approval requests (⏳) trigger real desktop notifications via Tauri — not just in-app alerts.
+
+## Managing your tasks
+
+Click the **⚡ Tasks** button in the overlay to:
+- See all active, scheduled, and completed tasks at a glance
+- **Pause / Resume / Run Now** any task
+- Edit goals, schedules, and approval settings
+- View full execution history with every tool call
+- Approve or reject pending runs (with optional notes)
+
+## Try it: create a task via API
+
+```bash
+# Create a daily research task
+curl -X POST http://localhost:3001/tasks \
+  -H "Content-Type: application/json" \
+  -d '{
+    "goal": "Research the latest AI news and write a brief summary",
+    "taskType": "recurring",
+    "schedule": { "interval": "daily" },
+    "approval": { "mode": "first_n", "firstN": 3 }
+  }'
+
+# Check on it
+curl http://localhost:3001/tasks
+
+# Trigger it right now (don't wait for the schedule)
+curl -X POST http://localhost:3001/tasks/{id}/run
+
+# Watch it work in real-time
+curl http://localhost:3001/tasks/events  # SSE stream
+```
+
+<Tip>
+  See the [Tasks API Reference](/api-reference/tasks/list) for the complete list of endpoints.
+</Tip>

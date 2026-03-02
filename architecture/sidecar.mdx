@@ -1,0 +1,100 @@
+---
+title: "Node.js Sidecar"
+description: "The brain of NIOM — where AI reasoning, tool execution, and everything intelligent actually happens."
+---
+
+The Node.js sidecar (`niom-ai/`) is where all intelligence lives. It's a standalone HTTP server that the Rust shell spawns and manages as a child process.
+
+## Project layout
+
+```
+niom-ai/src/
+├── index.ts              # Hono HTTP server + boot sequence
+├── config.ts             # ~/.niom/config.json management (cached)
+├── crypto.ts             # AES-256-GCM encryption for stored data
+├── threads.ts            # Conversation thread persistence (via MemoryStore)
+│
+├── ai/                   # 🧠 Intelligence
+│   ├── agent.ts          # Agent pipeline (Analyze → Route → Execute → Evaluate)
+│   ├── analyze.ts        # Intent classification + fast-path heuristics
+│   ├── evaluate.ts       # Quality evaluation after execution
+│   ├── extract.ts        # Long-term memory — auto-extracts facts from conversations
+│   ├── providers.ts      # AI Gateway + multi-model routing
+│   ├── context.ts        # Workspace context + project detection (cached)
+│   ├── capabilities.ts   # Dynamic capability registry
+│   └── health.ts         # ToolHealthMonitor (self-healing)
+│
+├── memory/               # 💾 Unified persistence layer
+│   └── store.ts          # MemoryStore — encrypted file I/O + index management
+│
+├── tools/                # 🤲 Tool implementations
+│   ├── index.ts          # Tool registry (built-in + MCP merge, cached)
+│   ├── file.ts           # readFile, writeFile, listDirectory, deleteFile
+│   ├── shell.ts          # runCommand (30s timeout)
+│   ├── web.ts            # webSearch + fetchUrl
+│   ├── system.ts         # systemInfo
+│   └── computer.ts       # Computer use (screenshot, click, type, scroll)
+│
+├── mcp/                  # 🌐 MCP Client
+│   └── client.ts         # MCPManager singleton
+│
+├── tasks/                # ⚡ Background tasks
+│   ├── types.ts          # Task types + state machine
+│   ├── manager.ts        # TaskManager singleton (via MemoryStore)
+│   ├── runner.ts         # Barrel export for runner submodules
+│   └── runner/           # Decomposed task execution engine
+│       ├── execute.ts    # Core execution loop
+│       ├── prompt.ts     # System prompt construction
+│       ├── approval.ts   # Approval flow logic
+│       ├── memory.ts     # Task memory updates
+│       └── events.ts     # SSE progress event emitter
+│
+└── routes/               # 🔌 HTTP endpoints
+    ├── run.ts            # POST /run, /run/approve, /run/sync
+    ├── tasks.ts          # Full REST API for task management
+    ├── providers.ts      # Model/provider switching
+    ├── threads.ts        # Thread CRUD + fact extraction trigger
+    ├── memory.ts         # Brain API (facts, preferences, clear)
+    ├── mcp.ts            # MCP connection endpoints
+    └── health.ts         # GET /health
+```
+
+## Key dependencies
+
+| Package | What it does |
+|---------|-------------|
+| `ai` (v6) | Vercel AI SDK — `streamText()`, `generateText()`, tool calling, structured output |
+| `@ai-sdk/gateway` (v3) | AI Gateway — single API key for all providers |
+| `hono` | HTTP framework (lightweight, fast, Express-like) |
+| `@modelcontextprotocol/sdk` | MCP client for connecting to external tool servers |
+| `zod` | Schema validation for structured output |
+| `@mozilla/readability` + `jsdom` | Web page content extraction (for `fetchUrl`) |
+
+## Boot sequence
+
+Here's what happens when NIOM starts:
+
+1. Tauri spawns the sidecar as a child process
+2. Sidecar loads config from `~/.niom/config.json`
+3. Initializes AI providers, TaskManager, and MCPManager
+4. Starts the Hono HTTP server on `localhost:3001`
+5. Returns `200 OK` on `GET /health`
+6. Tauri polls health every 5 seconds — auto-restarts on crash (max 3 attempts)
+
+## Streaming protocol
+
+The sidecar uses **AI SDK UIMessageStream** for real-time responses via Server-Sent Events (SSE):
+
+| Event | When it fires |
+|-------|-------------|
+| `reasoning-start/delta/end` | During the analysis phase |
+| `text-delta` | As the response streams to the overlay |
+| `tool-input-start/available` | When a tool call begins and its arguments are ready |
+| `tool-output-available` | When a tool returns its result |
+| `tool-approval-request` | When a destructive action needs your OK |
+| `step-boundary` | Between steps in multi-step execution |
+| `finish` | Stream complete |
+
+<Tip>
+  If you're building on top of NIOM's API, use any AI SDK-compatible SSE client to consume these events. The format is identical to what Vercel AI SDK produces.
+</Tip>

@@ -1,0 +1,158 @@
+---
+title: "Configuration"
+description: "One file. Every setting. No scattered .env files — just ~/.niom/config.json."
+---
+
+NIOM keeps things simple: **one configuration file** at `~/.niom/config.json`. That's it. No `.env` files, no environment variables to juggle.
+
+## Common setups
+
+<AccordionGroup>
+  <Accordion title="Minimal (cloud AI, no extras)">
+    The bare minimum to get running. Uses Claude with DuckDuckGo search (no API key needed):
+
+    ```json
+    {
+      "workspace": "C:\\Users\\you",
+      "gateway_key": "vck_...",
+      "provider": "anthropic",
+      "model": "anthropic/claude-4-sonnet-20250514"
+    }
+    ```
+  </Accordion>
+  <Accordion title="Power user (multi-model + search + MCP)">
+    Fast analysis with Groq, main work with Claude, vision with GPT-4o, Brave search, and GitHub connected:
+
+    ```json
+    {
+      "workspace": "C:\\Users\\you",
+      "gateway_key": "vck_...",
+      "provider": "anthropic",
+      "model": "anthropic/claude-4-sonnet-20250514",
+      "search": { "provider": "brave", "api_key": "BSA..." },
+      "models": {
+        "fast": "groq/llama-3.3-70b-versatile",
+        "vision": "openai/gpt-4o"
+      },
+      "mcp": [
+        {
+          "name": "github",
+          "command": "github-mcp-server",
+          "env": { "GITHUB_TOKEN": "ghp_..." }
+        }
+      ]
+    }
+    ```
+  </Accordion>
+  <Accordion title="Fully offline (Ollama, zero network)">
+    Everything runs locally. No API keys, no cloud, no network calls:
+
+    ```json
+    {
+      "workspace": "C:\\Users\\you",
+      "provider": "ollama",
+      "model": "ollama/llama3.1",
+      "models": {
+        "fast": "ollama/llama3.1",
+        "vision": "ollama/llava"
+      }
+    }
+    ```
+
+    <Tip>Make sure [Ollama](https://ollama.ai) is installed and running locally.</Tip>
+  </Accordion>
+</AccordionGroup>
+
+## Full reference
+
+### Core settings
+
+| Field | Type | Default | What it does |
+|-------|------|---------|-------------|
+| `workspace` | string | Home directory | Root directory for file operations — NIOM works within this folder |
+| `gateway_key` | string | — | Your AI Gateway API key (required for cloud models) |
+| `provider` | string | `"anthropic"` | Which LLM provider to use |
+| `model` | string | `"anthropic/claude-4-sonnet-20250514"` | The main model for execution |
+| `sidecar_port` | number | `3001` | Port the AI sidecar listens on |
+
+### Search
+
+NIOM can search the web during conversations. Two providers are supported:
+
+| Field | Type | Default | What it does |
+|-------|------|---------|-------------|
+| `search.provider` | `"brave"` or `"duckduckgo"` | `"duckduckgo"` | DuckDuckGo works without a key. Brave is faster and richer. |
+| `search.api_key` | string | — | Brave Search API key ([free tier: 2,000 searches/month](https://brave.com/search/api/)) |
+
+### Model roles
+
+NIOM uses different models for different jobs — so you're not paying premium prices for simple analysis:
+
+| Field | Used for | Default | Why |
+|-------|----------|---------|-----|
+| `model` (your selection) | Main execution | Claude Sonnet | The workhorse. Handles tool calls, reasoning, and responses |
+| `models.fast` | Analysis + evaluation | Groq Llama 3.3 70B | Sub-second, cheap. Used for intent classification and quality checks |
+| `models.vision` | Screenshot understanding | GPT-4o | Needed for computer use — reads what's on your screen |
+
+### File watching (Cortex)
+
+NIOM watches your workspace for file changes to build context. You can tune what it watches:
+
+| Field | Type | Default | What it does |
+|-------|------|---------|-------------|
+| `cortex.watch_paths` | string[] | `[]` | Extra directories to watch beyond your workspace |
+| `cortex.excluded` | string[] | Common excludes | Folder names to ignore (e.g., `node_modules`, `.git`, `target`) |
+| `cortex.max_events` | number | `1000` | How many file events to keep in memory |
+
+### MCP servers
+
+Connect external tools by adding MCP servers. They auto-start when the sidecar boots:
+
+```json
+{
+  "mcp": [
+    {
+      "name": "github",
+      "command": "github-mcp-server",
+      "args": [],
+      "env": { "GITHUB_TOKEN": "ghp_..." }
+    }
+  ]
+}
+```
+
+<Tip>
+  See the [MCP Integration guide](/guides/mcp) for setup instructions and a list of popular servers.
+</Tip>
+
+## Where your data lives
+
+```
+~/.niom/
+├── config.json              # This file — all your settings
+├── memory/                  # Unified persistence layer (MemoryStore)
+│   ├── index.json           # Fast lookup index for all collections
+│   ├── conversations/       # Chat threads
+│   │   └── {thread-id}.enc  # AES-256-GCM encrypted
+│   ├── tasks/               # Background task definitions
+│   │   └── {task-id}.enc
+│   ├── runs/                # Task execution history
+│   │   └── {task-id}/
+│   │       └── run_NNNN.enc
+│   └── brain/               # Long-term memory
+│       └── knowledge.enc    # Facts, preferences, patterns
+├── screenshots/             # Computer use (auto-cleanup, last 5 kept)
+└── mcp/                     # MCP configs (future)
+```
+
+<Note>
+  All data in `memory/` is encrypted with AES-256-GCM. Even if someone accesses your `~/.niom/` directory, they can't read your conversations, tasks, or learned facts.
+</Note>
+
+## How to update your config
+
+Three ways, pick whichever suits you:
+
+1. **Settings UI** — open the overlay and go to Settings
+2. **API call** — `POST /providers/configure` ([docs](/api-reference/config/providers))
+3. **Edit the file directly** — change `~/.niom/config.json` (requires sidecar restart)

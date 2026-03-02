@@ -1,80 +1,162 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Go from zero to your first NIOM query in under 5 minutes."
 ---
 
-## Get started in three steps
+## What you'll need
 
-Get your documentation site running locally and make your first customization.
+<Info>
+  **Before you start:**
+  - **Windows 10/11**, **macOS 12+**, or **Linux** (Ubuntu 22.04+, Fedora 38+, Arch)
+  - An API key from any AI provider — [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), or [Google](https://aistudio.google.com) all work
+</Info>
 
-### Step 1: Set up your local environment
+## Install and run
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+<Step title="Install NIOM">
 
-### Step 2: Deploy your changes
+  <Tabs>
+    <Tab title="macOS">
+      **Homebrew:**
+      ```bash
+      brew tap niomstack/niom https://github.com/niomstack/niom
+      brew install --cask niom
+      ```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+      Or download the `.dmg` from [GitHub Releases](https://github.com/niomstack/niom/releases).
+    </Tab>
+    <Tab title="Windows">
+      **Scoop:**
+      ```powershell
+      scoop bucket add niom https://github.com/niomstack/niom
+      scoop install niom
+      ```
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+      Or download the `.exe` installer from [GitHub Releases](https://github.com/niomstack/niom/releases).
+    </Tab>
+    <Tab title="Linux">
+      Download from [GitHub Releases](https://github.com/niomstack/niom/releases):
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+      ```bash
+      # Debian/Ubuntu
+      sudo dpkg -i niom_*.deb
 
-### Step 3: Go live
+      # Any distro (AppImage)
+      chmod +x niom_*.AppImage
+      ./niom_*.AppImage
+      ```
+    </Tab>
+    <Tab title="From Source">
+      ```bash
+      git clone https://github.com/niomstack/niom.git
+      cd niom
+      pnpm install
+      pnpm --filter niom-ai install
+      pnpm tauri dev
+      ```
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+      **Requirements:** Node.js 22+, Rust 1.75+, pnpm 9+
+    </Tab>
+  </Tabs>
+</Step>
 
-## Next steps
+<Step title="Start NIOM">
+  Launch NIOM from your Applications folder, Start Menu, or app launcher. It runs in your **system tray**.
 
-Now that you have your docs running, explore these key features:
+  <Tip>Building from source? Run `pnpm tauri dev` to start all three services at once.</Tip>
+</Step>
+
+<Step title="Connect your AI provider">
+  Press **Ctrl+Space** to open the overlay, then go to **Settings** and enter your API key.
+
+  Or configure via the terminal:
+  ```bash
+  curl -X POST http://localhost:3001/providers/configure \
+    -H "Content-Type: application/json" \
+    -d '{"model": "anthropic/claude-4-sonnet-20250514", "gateway_key": "your-key-here"}'
+  ```
+
+  <Tip>
+    Don't want to use cloud AI? NIOM works fully offline with [Ollama](https://ollama.ai). Just set the provider to `ollama` and choose a local model.
+  </Tip>
+</Step>
+
+<Step title="Try it out">
+  Press **Ctrl+Space** and type something. Here are a few ideas:
+
+  | Try saying... | What happens |
+  |---------------|-------------|
+  | `"What files are in my project?"` | NIOM reads your directory structure |
+  | `"Search for the latest AI research"` | Runs a web search and summarizes results |
+  | `"Monitor my downloads folder"` | Creates a background task that watches for changes |
+  | `"Take a screenshot and describe it"` | Captures your screen and uses vision AI to explain it |
+
+  NIOM will analyze your request, pick the right tools, and stream a response — all in the overlay.
+</Step>
+</Steps>
+
+## Make sure it's working
+
+Check that the sidecar is healthy:
+
+```bash
+curl http://localhost:3001/health
+```
+
+You should see:
+```json
+{
+  "status": "ok",
+  "uptime_ms": 12345,
+  "version": "0.1.0"
+}
+```
+
+<Warning>
+  If you get `connection refused`, the sidecar hasn't started yet. Wait a few seconds after `pnpm tauri dev` — it boots asynchronously.
+</Warning>
+
+## Your config file
+
+Everything lives in one place: `~/.niom/config.json`. No `.env` files, no scattered secrets.
+
+```json
+{
+  "workspace": "C:\\Users\\you",
+  "gateway_key": "your-key-here",
+  "provider": "anthropic",
+  "model": "anthropic/claude-4-sonnet-20250514",
+  "sidecar_port": 3001,
+  "search": {
+    "provider": "brave",
+    "api_key": "BSA..."
+  },
+  "models": {
+    "fast": "groq/llama-3.3-70b-versatile",
+    "vision": "openai/gpt-4o"
+  },
+  "mcp": []
+}
+```
+
+<Tip>
+  See the [Configuration reference](/configuration) for every option explained.
+</Tip>
+
+## What to explore next
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="How NIOM thinks" icon="brain" href="/guides/agent-engine">
+    The 4-tier reasoning pipeline that makes NIOM different from a chatbot.
+  </Card>
+  <Card title="Background tasks" icon="bolt" href="/guides/background-tasks">
+    Set up recurring automations that run while you're away.
+  </Card>
+  <Card title="Connect tools via MCP" icon="plug" href="/guides/mcp">
+    Plug in GitHub, Slack, Google Drive, and thousands more.
+  </Card>
+  <Card title="Full API reference" icon="code" href="/api-reference/introduction">
+    Build on top of NIOM's HTTP API.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

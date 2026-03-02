@@ -1,0 +1,55 @@
+---
+title: "Self-Healing Agent"
+description: "NIOM detects when it's stuck, corrects itself, and knows when to give up. No infinite loops. No wasted compute."
+---
+
+AI agents have a dirty secret: they get stuck. They call the same failing tool 10 times in a row. They send empty queries. They burn through their step budget producing nothing useful. Most frameworks let this happen silently.
+
+**NIOM's ToolHealthMonitor watches every tool call and self-corrects in real-time.**
+
+## How it works
+
+```
+Every tool call → health.record({ tool, success, args, error })
+
+Before each LLM step → health.check()
+  → Warning?      → Inject corrective guidance into the prompt
+  → Circuit-break? → Disable the failing tool entirely
+  → Abort?         → Terminate the run early
+```
+
+The key insight: corrections flow through AI SDK's native `prepareStep` callback. The LLM sees the guidance naturally as part of its next prompt — not as a hack bolted on after the fact.
+
+## The escalation chain
+
+Problems start small and NIOM responds proportionally:
+
+| Level | What triggers it | What NIOM does |
+|-------|-----------------|----------------|
+| **⚠️ Warning** | 3 consecutive failures of the same tool | Adds to prompt: "This tool has failed 3 times — try a different approach" |
+| **🔌 Circuit-break** | 5 consecutive failures of the same tool | Removes that tool entirely from the available set |
+| **🔁 Duplicate detection** | Same tool called with identical arguments | "You've already tried this exact call — change your approach" |
+| **📭 Empty input** | 2+ calls with empty required arguments | "Stop and think about what inputs you actually need" |
+| **🛑 Abort** | >70% failure rate across 6+ tool calls | Run terminated — "this approach isn't working" |
+
+## What counts as a failure?
+
+NIOM catches both **hard failures** and **soft failures**:
+
+- **Hard failure**: Tool throws an exception (network error, permission denied, timeout)
+- **Soft failure**: Tool returns successfully but with no useful result (0 search results, an error field in the output)
+
+This distinction is critical. Most agents treat "0 search results" as success because no exception was thrown. NIOM recognizes it as a failure and guides the agent to try something different.
+
+## What it looks like in practice
+
+| Without self-healing | With ToolHealthMonitor |
+|---------------------|----------------------|
+| Agent sends 10 identical blank searches | Caught after 2 — "stop and think about what you need" |
+| `webSearch` keeps failing, wastes all steps | Circuit-broken after 5 — agent switches to `fetchUrl` |
+| 80% of tool calls fail, run "completes" with nothing | Aborted at 70% failure rate — no wasted compute |
+| User sees empty results, no explanation | Clear badges: "(empty query)", "failed", "circuit-broken" |
+
+<Tip>
+  Self-healing is always active during background task execution — where there's no human watching. For chat interactions, it provides gentle corrections without interrupting the conversation.
+</Tip>

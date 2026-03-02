@@ -1,0 +1,27 @@
+---
+title: "POST /run/approve"
+description: "Resume the agent after a tool approval request. Continues execution without re-analysis."
+---
+
+When a tool requires approval (e.g., `writeFile`, `deleteFile`, `runCommand`), the SSE stream pauses with a `tool-approval-request` event. Use this endpoint to approve or deny and continue.
+
+## Request
+
+```bash
+curl -X POST http://localhost:3001/run/approve \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [...conversation, {"role": "tool", "content": [{"type": "tool-approval-response", "approvalId": "...", "approved": true}]}],
+    "context": {"cwd": "/Users/you/projects"}
+  }'
+```
+
+### Key Design
+
+- **Does NOT re-analyze** — directly continues via `streamText()` with the full message history
+- Supports **chained approvals** — multiple approvals in a single multi-step execution
+- The denied-tool system prompt instructs the agent not to retry denied tools
+
+## Response
+
+Same SSE stream format as `POST /run`.

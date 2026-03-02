@@ -1,0 +1,51 @@
+---
+title: "MCP Servers"
+description: "Connect, disconnect, and list MCP server connections."
+---
+
+## List Connected Servers
+
+```bash
+GET /mcp/servers
+```
+
+```json
+{
+  "servers": [
+    {
+      "name": "github",
+      "status": "connected",
+      "tools": ["create_pr", "list_issues", "get_file_contents"]
+    }
+  ]
+}
+```
+
+## Connect to Server
+
+```bash
+POST /mcp/connect
+{
+  "name": "github",
+  "command": "github-mcp-server",
+  "args": [],
+  "env": { "GITHUB_TOKEN": "ghp_..." }
+}
+```
+
+```json
+{
+  "status": "connected",
+  "tools": ["create_pr", "list_issues", "get_file_contents", "search_repos"]
+}
+```
+
+The connection is saved to `~/.niom/config.json` and will auto-reconnect on next boot.
+
+## Disconnect Server
+
+```bash
+DELETE /mcp/:name
+```
+
+Removes the connection and cleans up from config.

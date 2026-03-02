@@ -1,97 +1,97 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "NIOM — Your work, on autopilot"
+description: "The ambient intelligence daemon that makes your computer alive. Proactive, local-first, for everyone."
 ---
 
-## Setting up
+**What if your computer could think ahead?**
 
-Get your documentation site up and running in minutes.
+NIOM is an always-on AI agent that lives on your desktop. It watches your workspace, understands context, and takes action proactively — before you ask. No cloud dependencies. No data leaving your machine. Just a quiet daemon that makes your computer genuinely useful.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+<Note>
+  NIOM is in active development (alpha). The architecture is stable and new features ship weekly.
+</Note>
 
-## Make it yours
+## Start here
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Install in 5 minutes" icon="rocket" href="/quickstart">
+    Download NIOM, connect your AI provider, and run your first query.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="How NIOM thinks" icon="brain" href="/guides/agent-engine">
+    Understand the 4-tier reasoning pipeline that powers every interaction.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Set up automations" icon="bolt" href="/guides/background-tasks">
+    Create tasks that run while you sleep — research, monitoring, content, and more.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Connect your tools" icon="plug" href="/guides/mcp">
+    Plug into GitHub, Slack, Google Drive, and 13,000+ other tools via MCP.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What NIOM does for you
 
-Everything you need to create world-class documentation.
+<CardGroup cols={2}>
+  <Card title="Skips the busywork" icon="bolt">
+    Automates repetitive tasks across your apps — file management, searches, scheduling, and more. You focus on what matters.
+  </Card>
+  <Card title="Acts before you ask" icon="eye">
+    Watches your workspace patterns and surfaces insights proactively. No manual prompting required.
+  </Card>
+  <Card title="Controls any app" icon="desktop">
+    Takes screenshots, clicks buttons, types text, scrolls — NIOM can interact with any desktop application on your behalf.
+  </Card>
+  <Card title="Works while you're away" icon="clock">
+    Background tasks that execute autonomously. The agent learns when to ask for permission and when to just handle it.
+  </Card>
+  <Card title="Connects to everything" icon="plug">
+    One command connects NIOM to GitHub, Slack, Google Drive, or any of the 13,000+ MCP servers in the ecosystem.
+  </Card>
+  <Card title="Catches its own mistakes" icon="shield-check">
+    Self-healing agent that detects failure loops, circuit-breaks bad tools, and knows when to stop. No infinite loops. No wasted compute.
+  </Card>
+  <Card title="Uses the right AI at the right time" icon="arrows-split-up-and-left">
+    Fast model for analysis, capable model for execution, vision model for screenshots. You don't manage this — NIOM does.
+  </Card>
+  <Card title="Your data stays put" icon="lock">
+    Everything lives on your machine at `~/.niom/`. Zero telemetry. Zero cloud storage. You choose your LLM provider.
+  </Card>
+</CardGroup>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+## Who is NIOM for?
 
-## Need inspiration?
+| You might be... | NIOM helps you... |
+|-----------------|-------------------|
+| A **developer** who lives in the terminal | Automate git workflows, monitor builds, search codebases, refactor files |
+| A **researcher** drowning in tabs | Let NIOM search, summarize, and compile — on schedule, in the background |
+| A **creator** who hates admin work | Schedule content generation, organize files, manage repetitive tasks |
+| **Privacy-conscious** about cloud AI | Run everything locally with Ollama — zero data leaves your machine |
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+## Under the hood
+
+```
+You work → NIOM watches → Understands context → Takes action → You approve (or it handles it)
+```
+
+NIOM runs as two lightweight processes:
+
+1. **Rust (Tauri)** — Thin OS shell (~200 lines). System tray, hotkeys, notifications.
+2. **Node.js Sidecar** — The brain. AI SDK v6, agent engine, tools, MCP, streaming.
+
+Press `Ctrl+Space` to summon the overlay. The daemon runs silently in the background.
+
+## Go deeper
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
+    Why hybrid? How the two processes cooperate.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/configuration">
+    One config file. Every option explained.
+  </Card>
+  <Card title="Built-in Tools" icon="wrench" href="/guides/tools">
+    Files, shell, web search, system info — what's available out of the box.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Full HTTP API for automation and integration.
+  </Card>
+</CardGroup>

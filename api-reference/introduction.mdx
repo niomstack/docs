@@ -1,33 +1,69 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "Complete HTTP API for the NIOM sidecar — agent, tasks, providers, MCP, and threads."
 ---
 
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
+The NIOM sidecar exposes a REST + SSE API on `localhost:3001`. The React overlay communicates with it via HTTP, and you can use it directly for automation and integration.
 
-## Welcome
+## Base URL
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
-
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+```
+http://localhost:3001
+```
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+No authentication required — the sidecar only binds to `localhost`.
+
+## Endpoints Overview
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Health check |
+| `GET` | `/` | API info + active model |
+| **Agent** | | |
+| `POST` | `/run` | Run agent (SSE stream) |
+| `POST` | `/run/approve` | Resume after tool approval (SSE stream) |
+| `POST` | `/run/sync` | Run agent (JSON response, for testing) |
+| **Tasks** | | |
+| `GET` | `/tasks` | List all tasks |
+| `POST` | `/tasks` | Create a task |
+| `GET` | `/tasks/:id` | Get task details |
+| `PUT` | `/tasks/:id` | Update task |
+| `DELETE` | `/tasks/:id` | Delete task |
+| `POST` | `/tasks/:id/start` | Start a planned task |
+| `POST` | `/tasks/:id/pause` | Pause a running task |
+| `POST` | `/tasks/:id/resume` | Resume a paused task |
+| `POST` | `/tasks/:id/run` | Trigger immediate execution |
+| `POST` | `/tasks/:id/approve` | Approve or reject a pending run |
+| `GET` | `/tasks/:id/runs` | Execution history |
+| `GET` | `/tasks/events` | Real-time progress (SSE) |
+| **Providers** | | |
+| `GET` | `/providers` | List providers |
+| `GET` | `/models` | List available models |
+| `POST` | `/providers/configure` | Switch model/provider |
+| `POST` | `/providers/test` | Test connectivity |
+| **Threads** | | |
+| `GET` | `/threads` | List conversation threads |
+| `GET` | `/threads/:id` | Get thread |
+| `PUT` | `/threads/:id` | Save/update thread |
+| `DELETE` | `/threads/:id` | Delete thread |
+| `DELETE` | `/threads` | Clear all threads |
+| **MCP** | | |
+| `GET` | `/mcp/servers` | List connected MCP servers |
+| `POST` | `/mcp/connect` | Connect to an MCP server |
+| `DELETE` | `/mcp/:name` | Disconnect an MCP server |
+
+## Health Check
+
+```bash
+curl http://localhost:3001/health
+```
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "status": "ok",
+  "uptime_ms": 12345,
+  "version": "0.1.0"
+}
 ```

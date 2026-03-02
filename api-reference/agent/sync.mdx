@@ -1,0 +1,26 @@
+---
+title: "POST /run/sync"
+description: "Run the agent and get a JSON response instead of SSE. Useful for testing and automation."
+---
+
+## Request
+
+Same body as `POST /run`.
+
+## Response
+
+```json
+{
+  "text": "Here's what I found about AI efficiency...",
+  "steps": [
+    {
+      "text": "...",
+      "toolCalls": [{"toolName": "webSearch", "args": {"query": "AI efficiency 2026"}}],
+      "toolResults": [{"results": [...]}]
+    }
+  ],
+  "metadata": {
+    "model": "anthropic/claude-4-sonnet-20250514"
+  }
+}
+```

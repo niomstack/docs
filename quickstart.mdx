@@ -8,7 +8,7 @@ description: "Go from zero to your first NIOM query in under 5 minutes."
 <Info>
   **Before you start:**
   - **Windows 10/11**, **macOS 12+**, or **Linux** (Ubuntu 22.04+, Fedora 38+, Arch)
-  - An API key from any AI provider — [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), or [Google](https://aistudio.google.com) all work
+  - An API key from any supported provider — [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), [Google](https://aistudio.google.com), or [Groq](https://console.groq.com)
 </Info>
 
 ## Install and run
@@ -68,17 +68,17 @@ description: "Go from zero to your first NIOM query in under 5 minutes."
 </Step>
 
 <Step title="Connect your AI provider">
-  Press **Ctrl+Space** to open the overlay, then go to **Settings** and enter your API key.
+  Press **Ctrl+Space** to open the overlay, then go to **Settings** and select your provider + enter your API key.
 
-  Or configure via the terminal:
-  ```bash
-  curl -X POST http://localhost:3001/providers/configure \
-    -H "Content-Type: application/json" \
-    -d '{"model": "anthropic/claude-4-sonnet-20250514", "gateway_key": "your-key-here"}'
-  ```
+  NIOM supports:
+  - **Anthropic** (Claude) — recommended for best tool-use performance
+  - **OpenAI** (GPT-4o, o1, etc.)
+  - **Google** (Gemini)
+  - **Groq** (fast, free tier available)
+  - **Ollama** (fully offline, no API key needed)
 
   <Tip>
-    Don't want to use cloud AI? NIOM works fully offline with [Ollama](https://ollama.ai). Just set the provider to `ollama` and choose a local model.
+    Don't want to use cloud AI? NIOM works fully offline with [Ollama](https://ollama.ai). Just set the provider to `ollama` and choose a local model. No API key required.
   </Tip>
 </Step>
 
@@ -86,13 +86,14 @@ description: "Go from zero to your first NIOM query in under 5 minutes."
   Press **Ctrl+Space** and type something. Here are a few ideas:
 
   | Try saying... | What happens |
-  |---------------|-------------|
-  | `"What files are in my project?"` | NIOM reads your directory structure |
-  | `"Search for the latest AI research"` | Runs a web search and summarizes results |
-  | `"Monitor my downloads folder"` | Creates a background task that watches for changes |
-  | `"Take a screenshot and describe it"` | Captures your screen and uses vision AI to explain it |
+  |:-------------|:------------|
+  | "What files are in my project?" | Reads your directory structure |
+  | "Search for the latest AI research" | Runs a web search and summarizes results |
+  | "Research quantum computing deeply" | Multi-source deep research with citations |
+  | "Write a summary of AI trends every 2 days" | Creates a scheduled background task |
+  | "Take a screenshot and describe it" | Captures your screen and uses vision AI |
 
-  NIOM will analyze your request, pick the right tools, and stream a response — all in the overlay.
+  NIOM's [Skill Tree](/guides/skill-tree) analyzes your request, selects the right tools, and streams a response — all in the overlay.
 </Step>
 </Steps>
 
@@ -114,7 +115,7 @@ You should see:
 ```
 
 <Warning>
-  If you get `connection refused`, the sidecar hasn't started yet. Wait a few seconds after `pnpm tauri dev` — it boots asynchronously.
+  If you get `connection refused`, the sidecar hasn't started yet. Wait a few seconds after launch — it boots asynchronously.
 </Warning>
 
 ## Your config file
@@ -124,21 +125,18 @@ Everything lives in one place: `~/.niom/config.json`. No `.env` files, no scatte
 ```json
 {
   "workspace": "C:\\Users\\you",
-  "gateway_key": "your-key-here",
   "provider": "anthropic",
   "model": "anthropic/claude-4-sonnet-20250514",
+  "anthropic_api_key": "sk-ant-...",
   "sidecar_port": 3001,
-  "search": {
-    "provider": "brave",
-    "api_key": "BSA..."
-  },
   "models": {
     "fast": "groq/llama-3.3-70b-versatile",
     "vision": "openai/gpt-4o"
-  },
-  "mcp": []
+  }
 }
 ```
+
+**That's it.** Web search works out of the box (DuckDuckGo, no API key). Artifacts save to `~/.niom/artifacts/` by default. The [Skill Tree](/guides/skill-tree) builds itself as you use NIOM.
 
 <Tip>
   See the [Configuration reference](/configuration) for every option explained.
@@ -147,16 +145,16 @@ Everything lives in one place: `~/.niom/config.json`. No `.env` files, no scatte
 ## What to explore next
 
 <CardGroup cols={2}>
-  <Card title="How NIOM thinks" icon="brain" href="/guides/agent-engine">
-    The 4-tier reasoning pipeline that makes NIOM different from a chatbot.
+  <Card title="Skill Tree routing" icon="brain" href="/guides/skill-tree">
+    How NIOM picks the right tools for every request — and gets smarter over time.
   </Card>
   <Card title="Background tasks" icon="bolt" href="/guides/background-tasks">
-    Set up recurring automations that run while you're away.
+    Set up autonomous tasks that stream progress live and save artifacts.
   </Card>
   <Card title="Connect tools via MCP" icon="plug" href="/guides/mcp">
-    Plug in GitHub, Slack, Google Drive, and thousands more.
+    Add GitHub, Slack, Google Drive, and thousands more with one config line.
   </Card>
   <Card title="Full API reference" icon="code" href="/api-reference/introduction">
-    Build on top of NIOM's HTTP API.
+    Build on top of NIOM's HTTP + SSE API.
   </Card>
 </CardGroup>

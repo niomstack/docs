@@ -1,0 +1,49 @@
+---
+title: "List Artifacts"
+description: "GET /artifacts — List artifacts for a conversation or task."
+---
+
+Returns all artifacts (generated files) associated with a specific conversation or task.
+
+## Endpoint
+
+```
+GET /artifacts?contextType={type}&contextId={id}
+```
+
+## Query parameters
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:-----------|
+| `contextType` | `"conversation"` or `"task"` | Yes | What the artifacts are linked to |
+| `contextId` | string | Yes | The conversation or task ID |
+| `workspace` | string | No | If provided, also checks workspace artifact directory |
+
+## Response
+
+```json
+{
+  "artifacts": [
+    {
+      "id": "art-abc123",
+      "name": "ai_research_summary.md",
+      "path": "/home/user/.niom/artifacts/conv-123/ai_research_summary.md",
+      "mimeType": "text/markdown",
+      "size": 4520,
+      "contextType": "task",
+      "contextId": "task-456",
+      "createdAt": 1709556000000
+    }
+  ]
+}
+```
+
+## Example
+
+```bash
+# List artifacts for a conversation
+curl "http://localhost:3001/artifacts?contextType=conversation&contextId=conv-123"
+
+# List artifacts for a task
+curl "http://localhost:3001/artifacts?contextType=task&contextId=task-456"
+```

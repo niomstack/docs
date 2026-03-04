@@ -24,12 +24,14 @@
           {
             "group": "Guides",
             "pages": [
-              "guides/agent-engine",
+              "guides/skill-tree",
               "guides/background-tasks",
-              "guides/computer-use",
-              "guides/mcp",
+              "guides/artifacts",
+              "guides/deep-research",
+              "guides/memory",
               "guides/tools",
-              "guides/memory"
+              "guides/computer-use",
+              "guides/mcp"
             ]
           },
           {
@@ -37,6 +39,7 @@
             "pages": [
               "architecture/overview",
               "architecture/sidecar",
+              "architecture/skill-tree",
               "architecture/self-healing"
             ]
           }
@@ -55,7 +58,6 @@
             "group": "Agent",
             "pages": [
               "api-reference/agent/run",
-              "api-reference/agent/approve",
               "api-reference/agent/sync"
             ]
           },
@@ -64,7 +66,16 @@
             "pages": [
               "api-reference/tasks/list",
               "api-reference/tasks/create",
-              "api-reference/tasks/manage"
+              "api-reference/tasks/manage",
+              "api-reference/tasks/steer",
+              "api-reference/tasks/events"
+            ]
+          },
+          {
+            "group": "Artifacts",
+            "pages": [
+              "api-reference/artifacts/list",
+              "api-reference/artifacts/content"
             ]
           },
           {

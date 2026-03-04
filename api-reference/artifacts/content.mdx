@@ -1,0 +1,54 @@
+---
+title: "Get Artifact Content"
+description: "GET /artifacts/:id/content — Serve the content of a specific artifact."
+---
+
+Returns the content of a specific artifact. Text files are served inline. Binary files return metadata only.
+
+## Endpoint
+
+```
+GET /artifacts/:id/content?contextType={type}&contextId={id}
+```
+
+## Query parameters
+
+| Parameter | Type | Required | Description |
+|:----------|:-----|:---------|:-----------|
+| `contextType` | `"conversation"` or `"task"` | Yes | Context for locating the artifact |
+| `contextId` | string | Yes | The conversation or task ID |
+
+## Response
+
+**For text files** (markdown, code, JSON, etc.):
+```json
+{
+  "artifact": {
+    "id": "art-abc123",
+    "name": "ai_research_summary.md",
+    "mimeType": "text/markdown",
+    "size": 4520
+  },
+  "content": "# AI Research Summary\n\n## Key Findings\n..."
+}
+```
+
+**For binary files** (images, PDFs):
+```json
+{
+  "artifact": {
+    "id": "art-def456",
+    "name": "chart.png",
+    "mimeType": "image/png",
+    "size": 128000
+  },
+  "content": null,
+  "note": "Binary file — use the file path to access directly"
+}
+```
+
+## Example
+
+```bash
+curl "http://localhost:3001/artifacts/art-abc123/content?contextType=task&contextId=task-456"
+```

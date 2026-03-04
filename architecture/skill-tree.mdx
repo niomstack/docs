@@ -1,0 +1,143 @@
+---
+title: "Skill Tree Architecture"
+description: "Deep dive: embedding space, graph traversal, co-occurrence learning, and the resolver pipeline."
+---
+
+The Skill Tree is NIOM's tool selection engine. It solves the "tool explosion" problem — when an agent has 15+ tools, the LLM wastes tokens processing irrelevant options and accuracy drops. The Skill Tree dynamically selects 4-8 focused tools per request.
+
+## The problem
+
+Traditional AI agents dump all available tools into the system prompt. With 15+ tools (built-in + MCP), this means:
+- **Slower** — more tokens in context = longer inference
+- **Expensive** — every tool description costs tokens
+- **Less accurate** — the model gets confused by irrelevant tools
+
+The Skill Tree resolves a focused subset per request.
+
+## Architecture overview
+
+```
+User message
+  ↓
+┌──────────────────────────────────────────────┐
+│ 1. Domain Classification (fast model, ~200ms) │
+│    Intent → Domain: "code", "research", etc.  │
+├──────────────────────────────────────────────┤
+│ 2. Skill Pack Lookup                          │
+│    Domain → SkillPack → Base tool set         │
+├──────────────────────────────────────────────┤
+│ 3. Co-occurrence Boosting                     │
+│    Past success patterns boost tool weights   │
+├──────────────────────────────────────────────┤
+│ 4. Schedule Detection (Tier 1 + Tier 2)       │
+│    Temporal intent → override execution mode  │
+├──────────────────────────────────────────────┤
+│ 5. SkillPath Output                           │
+│    Focused tool set (4-8) + execution config  │
+└──────────────────────────────────────────────┘
+  ↓
+Agent executes with selected tools
+```
+
+## Components
+
+### Domain Router (`router.ts`)
+
+The entry point. Uses the fast model to classify a user message into one of the registered domains. The classification prompt is deterministic — same message always routes to the same domain.
+
+Domains are defined by Skill Packs (see below). The router scores each domain and selects the highest-confidence match.
+
+### Skill Packs (`packs/`)
+
+Each domain has a Skill Pack — a directory containing a `pack.json` that defines:
+- **Domain name** — e.g., `code`, `research`, `creative`
+- **Description** — what this domain handles
+- **Keywords** — routing hints for the fast model
+- **Tool set** — which built-in tools to include
+- **System prompt additions** — domain-specific instructions
+
+Built-in packs: `code`, `research`, `creative`, `business`, `personal`, `general`.
+
+### Skill Graph (`graph.ts`)
+
+Tracks tool co-occurrence — which tools tend to succeed together. Stored at `~/.niom/skill-graph.json`.
+
+The graph is a weighted adjacency matrix where:
+- **Nodes** = tools
+- **Edges** = co-occurrence frequency
+- **Weights** = success-weighted count
+
+When `webSearch` → `fetchUrl` → `writeFile` co-occur in a successful run, edges between these three tools are strengthened. Over time, selecting one tool boosts the weight of tools that commonly co-occur with it.
+
+### Traversal Engine (`traversal.ts`)
+
+The core resolver. Takes a user message and produces a `SkillPath`:
+
+1. **Domain classification** — ask the fast model which domain matches
+2. **Pack lookup** — get the base tool set from the matched Skill Pack
+3. **Graph boosting** — overlay co-occurrence weights to adjust tool selection
+4. **MCP merge** — add relevant MCP tools if connected
+5. **Schedule detection** — check for temporal intent (2-tier)
+6. **Cache** — store the result for similar future queries
+
+The output is a `SkillPath`: `{ domain, tools, executionMode, confidence }`.
+
+### Schedule Detection (`intent-validator.ts`)
+
+A 2-tier system that detects scheduling intent:
+
+**Tier 1 — Pattern matching** (zero latency):
+- Regex-based: detects "every day", "weekly", "in 2 hours", "daily", etc.
+- Only fires on high-confidence patterns
+
+**Tier 2 — LLM validation** (conditional, ~500ms):
+- Fires when: ambiguous domain scores, weak temporal language, action+temporal combos
+- Does NOT fire when: high-confidence single domain, simple queries, greetings
+- Uses the fast model with structured output (Zod schema)
+- Only applies override if confidence > 0.7
+
+### Embeddings (`embeddings.ts`)
+
+Pre-computed embeddings for tool descriptions and domain keywords. Used for semantic similarity matching when routing ambiguous queries.
+
+## Data flow
+
+```typescript
+// 1. User sends: "Research quantum computing and write a report"
+const path = await resolve(message, context);
+
+// 2. Result:
+{
+  domain: "research",
+  tools: ["webSearch", "deepResearch", "fetchUrl", "readFile", "writeFile"],
+  executionMode: "direct",
+  confidence: 0.92,
+  systemPromptAdditions: "You are a research specialist..."
+}
+
+// 3. Agent executes with only these 5 tools (not all 15+)
+```
+
+## Learning loop
+
+After each run, the Skill Graph is updated:
+
+```
+Run completes
+  → Extract tool calls that succeeded
+    → Update co-occurrence edges
+      → Save to skill-graph.json
+        → Next resolution uses updated weights
+```
+
+This means the Skill Tree gets more accurate over time — personalized to your specific usage patterns.
+
+## Performance
+
+| Metric | Value |
+|:-------|:------|
+| Domain classification | ~200ms (fast model) |
+| Full resolution | ~300ms (with Tier 2) |
+| Cache hit | ~1ms |
+| Tools selected | 4-8 (vs 15+ without Skill Tree) |
+| Accuracy improvement | Measurable after ~30 interactions |

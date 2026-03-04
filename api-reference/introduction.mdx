@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-description: "Complete HTTP API for the NIOM sidecar — agent, tasks, providers, MCP, and threads."
+description: "Complete HTTP + SSE API for the NIOM sidecar — agent, tasks, artifacts, memory, and configuration."
 ---
 
 The NIOM sidecar exposes a REST + SSE API on `localhost:3001`. The React overlay communicates with it via HTTP, and you can use it directly for automation and integration.
@@ -15,46 +15,76 @@ http://localhost:3001
 
 No authentication required — the sidecar only binds to `localhost`.
 
-## Endpoints Overview
+## Endpoints overview
 
 | Method | Path | Description |
-|--------|------|-------------|
+|:-------|:-----|:-----------|
 | `GET` | `/health` | Health check |
 | `GET` | `/` | API info + active model |
 | **Agent** | | |
-| `POST` | `/run` | Run agent (SSE stream) |
+| `POST` | `/run` | Run agent ([SSE stream](/api-reference/agent/run)) |
 | `POST` | `/run/approve` | Resume after tool approval (SSE stream) |
-| `POST` | `/run/sync` | Run agent (JSON response, for testing) |
+| `POST` | `/run/sync` | Run agent ([JSON response](/api-reference/agent/sync), for testing) |
 | **Tasks** | | |
-| `GET` | `/tasks` | List all tasks |
-| `POST` | `/tasks` | Create a task |
+| `GET` | `/tasks` | [List all tasks](/api-reference/tasks/list) |
+| `POST` | `/tasks` | [Create a task](/api-reference/tasks/create) |
 | `GET` | `/tasks/:id` | Get task details |
-| `PUT` | `/tasks/:id` | Update task |
-| `DELETE` | `/tasks/:id` | Delete task |
+| `PUT` | `/tasks/:id` | [Update task](/api-reference/tasks/manage) |
+| `DELETE` | `/tasks/:id` | Delete task (cascades: cleans up artifacts) |
 | `POST` | `/tasks/:id/start` | Start a planned task |
 | `POST` | `/tasks/:id/pause` | Pause a running task |
 | `POST` | `/tasks/:id/resume` | Resume a paused task |
 | `POST` | `/tasks/:id/run` | Trigger immediate execution |
-| `POST` | `/tasks/:id/approve` | Approve or reject a pending run |
+| `POST` | `/tasks/:id/steer` | [Steer with a comment](/api-reference/tasks/steer) |
 | `GET` | `/tasks/:id/runs` | Execution history |
-| `GET` | `/tasks/events` | Real-time progress (SSE) |
+| `GET` | `/tasks/events` | [Real-time progress (SSE)](/api-reference/tasks/events) |
+| **Artifacts** | | |
+| `GET` | `/artifacts` | [List artifacts](/api-reference/artifacts/list) by context |
+| `GET` | `/artifacts/:id/content` | [Get artifact content](/api-reference/artifacts/content) |
 | **Providers** | | |
-| `GET` | `/providers` | List providers |
-| `GET` | `/models` | List available models |
+| `GET` | `/providers` | [List providers](/api-reference/config/providers) |
+| `GET` | `/models` | [List available models](/api-reference/config/models) |
 | `POST` | `/providers/configure` | Switch model/provider |
 | `POST` | `/providers/test` | Test connectivity |
 | **Threads** | | |
 | `GET` | `/threads` | List conversation threads |
 | `GET` | `/threads/:id` | Get thread |
 | `PUT` | `/threads/:id` | Save/update thread |
-| `DELETE` | `/threads/:id` | Delete thread |
-| `DELETE` | `/threads` | Clear all threads |
+| `DELETE` | `/threads/:id` | Delete thread (cascades: tasks + non-workspace artifacts) |
+| `DELETE` | `/threads` | Clear all threads (cascades for each) |
 | **MCP** | | |
 | `GET` | `/mcp/servers` | List connected MCP servers |
-| `POST` | `/mcp/connect` | Connect to an MCP server |
+| `POST` | `/mcp/connect` | [Connect to an MCP server](/api-reference/config/mcp) |
 | `DELETE` | `/mcp/:name` | Disconnect an MCP server |
+| **Memory** | | |
+| `GET` | `/memory/brain` | [Get brain state](/api-reference/memory) |
+| `POST` | `/memory/brain/fact` | Add a fact |
+| `POST` | `/memory/brain/pref` | Set a preference |
+| `DELETE` | `/memory/brain/fact` | Remove a fact |
+| `DELETE` | `/memory/brain` | Clear all memory |
 
-## Health Check
+## Key concepts
+
+### SSE streaming
+
+NIOM uses two SSE protocols:
+- **Conversations** (`POST /run`) — AI SDK UIMessageStream with text deltas, tool calls, and reasoning
+- **Tasks** (`GET /tasks/events`) — custom events: `task:start`, `task:tool`, `task:complete`, `task:error`
+
+Both are real-time. The frontend builds state directly from SSE — no polling.
+
+### Cascade cleanup
+
+Deleting a thread (`DELETE /threads/:id`) cascades:
+1. Deletes linked background tasks
+2. Cleans up non-workspace artifacts (`~/.niom/artifacts/`)
+3. Preserves workspace artifacts (your project files are never deleted)
+
+### Artifacts
+
+Files created by the agent are auto-registered as artifacts. Query them with `GET /artifacts?contextType=conversation&contextId={id}`. See [Artifacts guide](/guides/artifacts).
+
+## Health check
 
 ```bash
 curl http://localhost:3001/health

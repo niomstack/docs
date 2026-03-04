@@ -1,100 +1,143 @@
 ---
 title: "Background Tasks"
-description: "Set it and forget it. NIOM runs tasks autonomously — and learns when to ask and when to just handle it."
+description: "Autonomous tasks that stream progress live. Steer them with comments. They remember what worked."
 ---
 
-What if your AI could work while you sleep? NIOM's background task system turns one-off requests into autonomous workflows that survive restarts, learn from your feedback, and eventually run without asking.
+NIOM's background tasks execute autonomously — researching, writing, monitoring, whatever you need. Unlike a chatbot that forgets when you close the window, tasks survive restarts, learn from each run, and stream every tool call to you in real-time.
 
 ## What you can automate
 
 <CardGroup cols={2}>
-  <Card title="One-shot research" icon="magnifying-glass">
-    "Research quantum computing deeply" — NIOM works in the background and notifies you when it's done.
+  <Card title="Scheduled research" icon="magnifying-glass">
+    "Research AI news every morning" — NIOM runs deep research on schedule, saves each report as an artifact.
   </Card>
-  <Card title="Recurring content" icon="calendar">
-    "Write a blog post about AI every 2 days" — scheduled runs, each going through the full reasoning pipeline.
+  <Card title="Content generation" icon="pen-to-square">
+    "Write a tech summary every 2 days" — recurring content that improves with each run thanks to task memory.
   </Card>
-  <Card title="File monitoring" icon="eye">
-    "Watch my downloads folder and organize new files" — reacts to changes automatically.
+  <Card title="One-shot work" icon="bolt">
+    "Deeply research quantum computing" — a single long-running task that runs in the background while you work.
   </Card>
-  <Card title="Triggered actions" icon="bolt">
-    "When I push to main, summarize the changes" — waits for a condition, then executes.
+  <Card title="Monitoring" icon="eye">
+    "Watch my project for TODO comments and list them" — periodic checks on whatever you care about.
   </Card>
 </CardGroup>
 
-## How it works
+## Creating tasks
 
-When NIOM detects a request that's long-running or recurring, it creates a background task instead of trying to do everything in one shot:
-
-```
-You: "Write a blog on AI efficiency every 2 days"
-
-NIOM:
-  1. Analyzes → complexity: long_running, schedule: every 2 days
-  2. Creates a background task
-  3. First run: researches → drafts → evaluates its own quality
-  4. Asks for your approval (the first few times)
-  5. After enough approvals → runs autonomously 🎓
-```
-
-## The approval graduation system
-
-This is what makes NIOM unique. **The agent learns when to ask and when to just handle it:**
-
-| Mode | What happens |
-|------|-------------|
-| **Always ask** | Every run waits for your approval before proceeding |
-| **First N** (default) | NIOM asks for approval on the first 3 runs. After that, it runs autonomously |
-| **Never ask** | Full autonomy from the start — use with caution |
-
-Your approval decisions (with optional notes) are stored in task memory. NIOM uses them to understand your preferences and improve future runs.
-
-## Task lifecycle
-
-Tasks are persistent — they survive overlay closes, sidecar restarts, even machine reboots:
+You don't need a special UI. Just describe what you want in a conversation:
 
 ```
-draft → planned → scheduled → running → completed
-                      ↑           ↓
-                   resume       pause
-                      ↑           ↓
-                    paused ←──────┘
+"Suggest AI tech short articles everyday so I can post on sub"
 ```
 
-**Native notifications**: Task completions (✅), failures (❌), and approval requests (⏳) trigger real desktop notifications via Tauri — not just in-app alerts.
+NIOM's [Skill Tree](/guides/skill-tree) detects the scheduling intent and automatically creates a background task. You'll see:
+1. A task created with a goal, schedule, and execution plan
+2. The first run starts immediately
+3. Progress streams live in the task panel
 
-## Managing your tasks
-
-Click the **⚡ Tasks** button in the overlay to:
-- See all active, scheduled, and completed tasks at a glance
-- **Pause / Resume / Run Now** any task
-- Edit goals, schedules, and approval settings
-- View full execution history with every tool call
-- Approve or reject pending runs (with optional notes)
-
-## Try it: create a task via API
-
+You can also create tasks via the API:
 ```bash
-# Create a daily research task
 curl -X POST http://localhost:3001/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "goal": "Research the latest AI news and write a brief summary",
     "taskType": "recurring",
-    "schedule": { "interval": "daily" },
-    "approval": { "mode": "first_n", "firstN": 3 }
+    "schedule": { "interval": "daily" }
   }'
-
-# Check on it
-curl http://localhost:3001/tasks
-
-# Trigger it right now (don't wait for the schedule)
-curl -X POST http://localhost:3001/tasks/{id}/run
-
-# Watch it work in real-time
-curl http://localhost:3001/tasks/events  # SSE stream
 ```
 
+## Live streaming
+
+Tasks stream their progress via SSE — the same way conversations do. You see every tool call as it happens:
+
+```
+⏳ Run #1 started
+  🔍 Searched: "latest AI news March 2026"
+  🌐 Fetched: techcrunch.com/ai-roundup
+  🌐 Fetched: arxiv.org/latest/cs.AI
+  📝 Wrote: ai_research_summary.md
+✅ Run #1 completed (45.2s, 7 tools)
+```
+
+The task panel auto-expands running tasks and shows:
+- Live tool status ("Running: Deep Research")
+- Each tool call with its input and output
+- Phase progress for multi-step tasks
+- Quality score on completion
+
+**No polling.** The frontend builds its state directly from SSE events. When a tool call finishes on the backend, it appears in the UI immediately.
+
+## Steering
+
+Steering replaces the old approval model. Instead of approve/deny, you **guide** running tasks with comments:
+
+```
+"Focus more on open-source models in the next run"
+```
+
+Post a steering comment from the task panel. It flows into the next run as additional context. The agent reads your feedback and adjusts its approach.
+
+Steering works because:
+- Comments are stored in task memory
+- Each run receives the full history of previous steering comments
+- The agent adapts based on accumulated feedback
+
+## Task memory
+
+Every task maintains a persistent memory that includes:
+- **Previous run outputs** — what was produced, what worked
+- **Steering comments** — your accumulated feedback
+- **Tool usage history** — which tools succeeded, which failed
+- **Quality evaluations** — how each run was scored
+
+This means run #5 is better than run #1 — the agent learns from its own execution history.
+
+## Task lifecycle
+
+Tasks are persistent — they survive overlay closes, sidecar restarts, and machine reboots:
+
+```
+draft → planned → scheduled → flowing (executing) → completed
+                      ↑             ↓
+                   resume         pause
+                      ↑             ↓
+                    paused ←────────┘
+```
+
+**Actions you can take:**
+- **Run Now** — trigger an immediate execution, regardless of schedule
+- **Pause / Resume** — temporarily stop or restart a task
+- **Steer** — post a comment that influences the next run
+- **Edit** — change the goal, schedule, or other settings
+- **Delete** — removes the task and cleans up non-workspace artifacts
+
+## Artifacts from tasks
+
+Files created during task execution are automatically registered as [artifacts](/guides/artifacts):
+- Find them in the task's detail panel
+- Or navigate to `~/.niom/artifacts/{task-id}/`
+- If the task has a workspace, artifacts go to your project instead
+
+## Native notifications
+
+Task events trigger real desktop notifications (via Tauri — not just in-app alerts):
+- ✅ **Completed** — "Task Complete: Research AI news..."
+- ❌ **Failed** — with error description
+- These notifications work even when the overlay is closed
+
+## SSE event types
+
+For developers building integrations, the task event stream (`GET /tasks/events`) emits:
+
+| Event | Payload | When |
+|:------|:--------|:-----|
+| `task:start` | `{ taskId, runId, runNumber, startedAt, phases }` | A run begins |
+| `task:tool` | `{ taskId, runId, tool, input, output }` | A tool call completes |
+| `task:phase` | `{ taskId, phase, status }` | A phase changes status |
+| `task:complete` | `{ taskId, runId, status, output, durationMs, qualityScore }` | A run finishes |
+| `task:error` | `{ taskId, runId, error }` | A run fails |
+| `task:steer` | `{ taskId, comment }` | A steering comment is posted |
+
 <Tip>
-  See the [Tasks API Reference](/api-reference/tasks/list) for the complete list of endpoints.
+  See the [Tasks Events API](/api-reference/tasks/events) for full SSE documentation.
 </Tip>

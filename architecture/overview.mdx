@@ -8,27 +8,29 @@ NIOM has an unusual architecture: a **hybrid daemon** that splits native OS acce
 ## The two processes
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        NIOM Daemon                           │
-│                                                              │
-│  ┌─── Rust (Tauri) ──────────┐  ┌──── Node.js Sidecar ────┐ │
-│  │                           │  │                          │ │
-│  │  System tray icon         │  │  🧠 AI Gateway           │ │
-│  │  Global hotkeys           │  │  🔄 Agent engine         │ │
-│  │  Overlay window           │  │  ⚡ Background tasks     │ │
-│  │  Native notifications     │  │  🤲 All tools            │ │
-│  │  Sidecar lifecycle        │  │  🔍 Web search           │ │
-│  │                           │  │  🌐 MCP client           │ │
-│  │  That's it.               │  │  🖥️ Computer use         │ │
-│  │  ~200 lines of Rust.      │  │  💬 SSE streaming        │ │
-│  │                           │  │  🩺 Self-healing         │ │
-│  └───────────────────────────┘  └──────────────────────────┘ │
-│                                                              │
-│  ┌──── Frontend (React + Vite + Tailwind v4) ──────────────┐ │
-│  │  Tauri IPC → Rust (OS-native only)                      │ │
-│  │  HTTP/SSE  → Node.js (everything else)                  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                           NIOM Daemon                                │
+│                                                                      │
+│  ┌─── Rust (Tauri) ──────────┐  ┌──── Node.js Sidecar ─────────────┐│
+│  │                           │  │                                   ││
+│  │  System tray icon         │  │  🌳 Skill Tree (domain routing)  ││
+│  │  Global hotkeys           │  │  🧠 Agent engine (4-tier)        ││
+│  │  Overlay window           │  │  ⚡ Background tasks (SSE)       ││
+│  │  Native notifications     │  │  🤲 Built-in tools (15+)        ││
+│  │  Sidecar lifecycle        │  │  🔍 Search (DDG/Tavily/Brave)   ││
+│  │                           │  │  🌐 MCP client (13,000+ tools)  ││
+│  │  That's it.               │  │  🖥️ Computer use                ││
+│  │  ~200 lines of Rust.      │  │  💬 SSE streaming               ││
+│  │                           │  │  📎 Artifacts system             ││
+│  │                           │  │  🧩 Long-term memory (brain)    ││
+│  │                           │  │  🩺 Self-healing                ││
+│  └───────────────────────────┘  └───────────────────────────────────┘│
+│                                                                      │
+│  ┌──── Frontend (React + Vite + Tailwind v4) ───────────────────────┐│
+│  │  Tauri IPC → Rust (OS-native only)                               ││
+│  │  HTTP/SSE  → Node.js (everything else)                           ││
+│  └──────────────────────────────────────────────────────────────────┘│
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Why split it this way?
@@ -36,7 +38,7 @@ NIOM has an unusual architecture: a **hybrid daemon** that splits native OS acce
 An earlier version of NIOM kept everything in Rust. It was 2,800 lines across 5 crates — and couldn't match what Node.js does in 120 lines:
 
 | Task | Rust (before) | Node.js (now) |
-|------|:---:|:---:|
+|:-----|:---:|:---:|
 | File read/write | 60 lines | 2 lines |
 | Shell execution | 40 lines | 3 lines |
 | Web search | 105 lines (and broken) | 3 lines |
@@ -47,24 +49,44 @@ An earlier version of NIOM kept everything in Rust. It was 2,800 lines across 5 
 
 The TypeScript AI ecosystem (Vercel AI SDK, MCP SDK, etc.) is **10-100x more mature** than Rust for this. Moving intelligence to Node.js and keeping only OS-native operations in Rust gives the best of both worlds.
 
-## The three pillars
+## System layers
 
-NIOM's intelligence operates as a continuous loop:
+NIOM's intelligence operates through multiple interconnected layers:
 
-**Perception** → What's happening?
-- File watcher (`chokidar`) monitors your workspace for changes
-- Session tracking: which file you're focused on, recent files, access patterns
-- No keylogging. No screen capture for observation. Everything local.
+### Layer 1: Skill Tree (routing)
 
-**Cognition** → What does it mean?
-- Intent analysis via structured output
-- 4-tier complexity routing (simple → standard → complex → long-running)
-- Multi-provider AI support (OpenAI, Anthropic, Google, Ollama)
+Every request enters through the [Skill Tree](/architecture/skill-tree) — a graph of tools organized by domain. It classifies your intent, selects the right 4-8 tools (from 15+ available), and determines execution mode (direct, background task, or scheduled).
 
-**Action** → Make it happen.
-- Agent engine with tool calling and evaluation
-- Self-healing via ToolHealthMonitor
-- MCP for universal tool orchestration
+```
+User message → Domain classification → Skill Pack → Tool subset → Execution mode
+```
+
+The Skill Tree is what makes NIOM different from a generic agent. Instead of dumping all tools into the prompt, it routes intelligently. See the [Skill Tree architecture](/architecture/skill-tree) deep-dive.
+
+### Layer 2: Agent engine (execution)
+
+The agent pipeline takes the Skill Tree's output and executes with adaptive depth:
+
+```
+Analyze → Route by complexity → Execute with tools → Evaluate quality → Respond (or refine)
+```
+
+For complex tasks, evaluation creates a refinement loop (up to 3 rounds). For simple queries, the pipeline is nearly instant. See the [Agent Engine guide](/guides/agent-engine).
+
+### Layer 3: Artifacts + memory (persistence)
+
+Everything the agent produces is tracked:
+- **Artifacts** — files created during execution are auto-registered and linked to conversations/tasks. See [Artifacts](/guides/artifacts).
+- **Brain memory** — facts, preferences, and patterns extracted from conversations. Injected into every future interaction. See [Memory](/guides/memory).
+- **Task memory** — per-task execution history, steering comments, and tool results. Makes each run smarter than the last.
+
+### Layer 4: SSE event system (streaming)
+
+Both conversations and tasks stream their progress via Server-Sent Events:
+- **Conversations** — AI SDK UIMessageStream protocol (text deltas, tool calls, reasoning)
+- **Tasks** — custom event types: `task:start`, `task:tool`, `task:phase`, `task:complete`, `task:error`
+
+The frontend builds its state directly from SSE events — no polling. See [Task Events API](/api-reference/tasks/events).
 
 ## Data flow
 
@@ -73,11 +95,11 @@ Here's what happens when you type something in the overlay:
 ```
 You type in the overlay
   → HTTP POST /run → Node.js sidecar
-    → Analyze intent (fast model, ~200ms)
-    → Route by complexity
-    → Execute with tools (capable model)
-    → Evaluate quality (fast model)
-    → SSE stream response back to the overlay
+    → Skill Tree routes to domain + selects tools (~200ms)
+    → Agent executes with selected tools (capable model)
+    → Artifacts auto-registered if files created
+    → Brain extracts facts asynchronously after save
+    → SSE streams response back to the overlay
 ```
 
 OS-level operations (hotkeys, tray, notifications) go through **Tauri IPC** → Rust. Everything else goes through **HTTP** → Node.js. Clean separation.

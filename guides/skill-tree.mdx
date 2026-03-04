@@ -1,0 +1,127 @@
+---
+title: "Skill Tree"
+description: "How NIOM picks the right tools for every request — and gets smarter over time."
+---
+
+When you ask NIOM to do something, it doesn't throw every tool at the problem. It routes your request through a **Skill Tree** — a graph of tools organized by domain — and selects the 4-8 tools most likely to succeed.
+
+This is what makes NIOM faster, cheaper, and more accurate than agents that load all tools for every request.
+
+## How it works
+
+```
+Your message
+  → Skill Tree analyzes intent
+    → Routes to a domain (Code, Research, Creative, etc.)
+      → Selects focused tool subset (4-8 tools)
+        → Agent executes with just those tools
+```
+
+<Steps>
+<Step title="Classify domain">
+  A fast model (~200ms) reads your message and maps it to one of NIOM's built-in skill domains:
+
+  | Domain | Example requests |
+  |:-------|:----------------|
+  | **Code** | "Refactor this module", "Find bugs in my project" |
+  | **Research** | "Research quantum computing", "Summarize this paper" |
+  | **Creative** | "Write a blog post about AI", "Draft an email" |
+  | **Business** | "Analyze this spreadsheet", "Create a project plan" |
+  | **Personal** | "Set a reminder", "Organize my files" |
+  | **General** | "What's the weather?", "Tell me a joke" |
+</Step>
+<Step title="Build a Skill Path">
+  Based on the domain, NIOM constructs a **Skill Path** — a ranked list of tools weighted by:
+  - **Domain relevance** — which tools belong to this skill domain
+  - **Co-occurrence data** — which tools tend to succeed together (learned from your usage)
+  - **Query embedding similarity** — how close your request is to each tool's capabilities
+
+  The result is a focused subset of 4-8 tools instead of the full 15+.
+</Step>
+<Step title="Detect execution mode">
+  Before executing, a lightweight scanner checks for scheduling intent:
+  - "do this **every morning**" → creates a recurring background task
+  - "**research deeply**" → routes to deep research mode
+  - "**monitor** my folder" → creates a one-shot observation task
+
+  This happens automatically — you don't need to manually choose "background task" vs "direct response."
+</Step>
+<Step title="Execute with the right tools">
+  The agent runs with only the selected tools. Fewer tools means:
+  - **Faster** — less context for the LLM to process
+  - **Cheaper** — smaller prompts = lower token cost
+  - **More accurate** — the model isn't confused by irrelevant tools
+</Step>
+</Steps>
+
+## Built-in skill domains
+
+NIOM ships with 6 domain packs. Each pack defines which tools are available:
+
+<AccordionGroup>
+  <Accordion title="🔧 Code">
+    File operations, shell commands, code search, editing. Activated when your request involves coding, debugging, or file management.
+
+    Tools: `readFile`, `writeFile`, `editFile`, `searchFiles`, `listDirectory`, `runCommand`
+  </Accordion>
+  <Accordion title="🔍 Research">
+    Web search, deep research, URL fetching. Activated for information gathering, analysis, and synthesis.
+
+    Tools: `webSearch`, `deepResearch`, `fetchUrl`, `readFile`, `writeFile`
+  </Accordion>
+  <Accordion title="✏️ Creative">
+    Content creation tools. Writing, drafting, editing. Activated for blog posts, emails, documents, and creative work.
+
+    Tools: `writeFile`, `readFile`, `webSearch`, `fetchUrl`, `deepResearch`
+  </Accordion>
+  <Accordion title="📊 Business">
+    Data analysis, planning, and organization. Activated for spreadsheets, project plans, and business tasks.
+
+    Tools: `readFile`, `writeFile`, `webSearch`, `listDirectory`, `runCommand`
+  </Accordion>
+  <Accordion title="👤 Personal">
+    Notifications, reminders, file organization. Activated for personal productivity tasks.
+
+    Tools: `notifyUser`, `listDirectory`, `writeFile`, `readFile`, `runCommand`
+  </Accordion>
+  <Accordion title="🌐 General">
+    The catch-all domain. System info, basic questions, quick tasks that don't fit a specific domain.
+
+    Tools: `systemInfo`, `webSearch`, `readFile`, `runCommand`
+  </Accordion>
+</AccordionGroup>
+
+## The co-occurrence graph
+
+As you use NIOM, it tracks which tools succeed together. If `webSearch` → `fetchUrl` → `writeFile` frequently co-occur in your research tasks, the Skill Tree learns this pattern and pre-selects all three when you ask for research.
+
+This data is stored locally at `~/.niom/skill-graph.json`. It's not sent anywhere — your usage patterns stay on your machine.
+
+Over time, tool selection becomes personalized to your workflow.
+
+## Schedule detection
+
+NIOM's Skill Tree includes a 2-tier schedule detection system:
+
+**Tier 1 — Pattern matching** (zero latency):
+- Detects obvious patterns: "every day", "weekly", "in 2 hours"
+- Triggers immediately — no LLM call needed
+
+**Tier 2 — LLM validation** (conditional):
+- Fires only when the query is ambiguous or combines temporal language with actions
+- Uses the fast model to confirm whether scheduling is intended
+- Only applies if confidence > 0.7 — prevents false positives
+
+If scheduling intent is detected, the request is automatically routed to the background task system instead of trying to execute everything in one shot.
+
+## Seeing it in action
+
+You don't need to think about the Skill Tree — it works silently. But if you're curious, you can see it:
+
+1. **Console logs** — the sidecar logs which domain was selected, which tools were loaded, and why
+2. **Skill graph file** — check `~/.niom/skill-graph.json` to see co-occurrence data
+3. **Task creation** — when the Skill Tree detects scheduling intent, it creates a task you can see in the Tasks panel
+
+<Tip>
+  The Skill Tree is designed to be invisible when it works well. The best indicator is that NIOM consistently picks the right tools without being told which ones to use.
+</Tip>

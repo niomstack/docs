@@ -1,25 +1,28 @@
 ---
 title: "Built-in Tools"
-description: "Files, shell, web search, screenshots, and more — what NIOM can do out of the box."
+description: "Files, shell, web search, deep research, and more — what NIOM can do out of the box."
 ---
 
-NIOM ships with a powerful set of tools that the agent uses automatically. Every tool is workspace-aware — file paths resolve relative to the workspace in your config.
+NIOM ships with a powerful set of tools that the agent selects automatically via the [Skill Tree](/guides/skill-tree). Every tool is workspace-aware — file paths resolve relative to the workspace in your config.
 
 ## File tools
 
 | Tool | What it does |
-|------|-------------|
+|:-----|:------------|
 | `readFile` | Reads the contents of a text file |
-| `writeFile` | Creates or overwrites a file |
+| `readFileRange` | Reads a specific line range from a file (for targeted context) |
+| `writeFile` | Creates or overwrites a file. Auto-registers as an [artifact](/guides/artifacts) |
+| `editFile` | Find-and-replace within a file — surgical edits without rewriting the whole file |
 | `listDirectory` | Lists files and folders with metadata (size, type) |
+| `searchFiles` | Searches for files by name pattern across your workspace |
 | `deleteFile` | Deletes a file (requires your approval first) |
 
-All paths resolve relative to your `workspace` setting.
+All paths resolve relative to your `workspace` setting. Files created by `writeFile` are automatically tracked as [artifacts](/guides/artifacts).
 
 ## Shell
 
 | Tool | What it does |
-|------|-------------|
+|:-----|:------------|
 | `runCommand` | Executes a shell command (30-second timeout) |
 
 <Warning>
@@ -29,20 +32,37 @@ All paths resolve relative to your `workspace` setting.
 ## Web search
 
 | Tool | What it does |
-|------|-------------|
-| `webSearch` | Searches the web via Brave API or DuckDuckGo (rate-limited, 2s cooldown) |
-| `fetchUrl` | Fetches a URL and extracts readable content (using Mozilla Readability) |
+|:-----|:------------|
+| `webSearch` | Searches the web and returns structured results with titles, URLs, and snippets |
+| `fetchUrl` | Fetches a URL and extracts readable content (Mozilla Readability) |
 
-**Which search provider?**
-- **DuckDuckGo** (default) — no API key needed, works immediately
-- **Brave Search** — faster, richer results. Requires an API key ([free tier: 2,000/month](https://brave.com/search/api/))
+**Search provider chain:**
+1. **DuckDuckGo** (default) — no API key needed, works immediately
+2. **Tavily** (optional upgrade) — purpose-built for AI, richer results. [Free: 1,000/month](https://tavily.com)
+3. **Brave** (optional upgrade) — fast, rich snippets. [Free: 2,000/month](https://brave.com/search/api/)
 
-If both are configured, NIOM tries Brave first and falls back to DuckDuckGo.
+If your configured provider fails, NIOM falls back automatically. Zero-config search always works.
+
+## Research
+
+| Tool | What it does |
+|:-----|:------------|
+| `deepResearch` | Multi-source research: multiple searches → fetch top sources → cross-reference → synthesize with citations |
+
+Deep research goes beyond a single web search. It generates multiple queries, fetches full page content from top results, and produces a comprehensive report with source citations. See the [Deep Research guide](/guides/deep-research).
+
+## Notifications
+
+| Tool | What it does |
+|:-----|:------------|
+| `notifyUser` | Sends a desktop notification with title, message, and urgency level |
+
+Used by the agent to alert you about completed tasks, important findings, or actions that need your attention.
 
 ## System info
 
 | Tool | What it does |
-|------|-------------|
+|:-----|:------------|
 | `systemInfo` | Reports CPU usage, memory, disk space, platform, and uptime |
 
 ## Computer use
@@ -51,18 +71,19 @@ Screenshots, mouse clicks, keyboard input, scrolling — see the dedicated [Comp
 
 ## MCP tools
 
-Any tools from connected MCP servers are dynamically merged with these built-in tools. See [MCP Integration](/guides/mcp).
+Any tools from connected MCP servers are dynamically merged with these built-in tools. The Skill Tree routes to MCP tools the same way it routes to built-in ones. See [MCP Integration](/guides/mcp).
 
 ## What needs your approval?
 
 NIOM uses a simple rule: **read-only actions run automatically, anything that changes state asks first.**
 
 | Tool | Approval needed? |
-|------|:----------------:|
-| `readFile`, `listDirectory`, `systemInfo` | No — read-only |
-| `webSearch`, `fetchUrl` | No — read-only |
-| `writeFile`, `deleteFile` | **Yes** — modifies files |
+|:-----|:----------------:|
+| `readFile`, `readFileRange`, `listDirectory`, `searchFiles`, `systemInfo` | No — read-only |
+| `webSearch`, `fetchUrl`, `deepResearch` | No — read-only |
+| `writeFile`, `editFile`, `deleteFile` | **Yes** — modifies files |
 | `runCommand` | **Dynamic** — `ls` auto-runs, `rm` asks |
+| `notifyUser` | No — notification only |
 | Computer use actions | **Yes** — GUI interactions always ask |
 
-When approval is needed, NIOM shows a card in the overlay with the tool name, what it wants to do, and **Approve / Deny** buttons. Nothing happens until you say so.
+When approval is needed, NIOM shows a card in the overlay with the tool name, what it wants to do, and **Approve / Deny** buttons.

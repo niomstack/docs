@@ -1,0 +1,91 @@
+---
+title: "Deep Research"
+description: "Multi-source research with citations. NIOM searches, reads, cross-references, and writes — so you don't have to."
+---
+
+Deep research mode goes beyond a single web search. NIOM fetches multiple sources, reads full pages, cross-references information, and synthesizes a comprehensive report — with citations for every claim.
+
+## How to trigger it
+
+Just describe what you want researched. The [Skill Tree](/guides/skill-tree) routes to deep research automatically:
+
+| Say this... | What happens |
+|:-----------|:------------|
+| "Research quantum computing deeply" | One-shot deep research → report in the conversation |
+| "Research AI trends every 2 days" | Creates a scheduled task that runs deep research on each execution |
+| "Give me a deep dive on competitor pricing" | Deep research with business-domain context |
+
+You don't need to say "use the deep research tool." The Skill Tree detects research intent and selects the right tools.
+
+## How it works
+
+```
+Your research request
+  → Web search (multiple queries)
+    → Fetch top sources (full page content)
+      → Cross-reference and synthesize
+        → Generate report with citations
+          → Save as artifact (if in a task)
+```
+
+<Steps>
+<Step title="Search phase">
+  NIOM generates multiple search queries from your request and runs them through the [search provider chain](/configuration#search) (DuckDuckGo by default, upgradeable to Tavily or Brave).
+</Step>
+<Step title="Fetch phase">
+  Top results are fetched and their full content is extracted using Mozilla Readability — the same engine Firefox uses for Reader View. Raw HTML is converted to clean, readable text.
+</Step>
+<Step title="Synthesis phase">
+  The AI reads all fetched content, cross-references claims across sources, and produces a structured report. Key findings are attributed to their sources with URLs.
+</Step>
+<Step title="Output">
+  The final report includes:
+  - **Summary** — key findings in a concise format
+  - **Detailed analysis** — organized by topic or question
+  - **Sources** — every claim linked to the page it came from
+  - **Artifact** — if running in a task, the report is saved as a `.md` file you can retrieve later
+</Step>
+</Steps>
+
+## Deep research in background tasks
+
+The real power is combining deep research with [background tasks](/guides/background-tasks):
+
+```
+"Research the latest AI breakthroughs every week and save a summary"
+```
+
+This creates a recurring task that:
+1. Runs `deepResearch` on a schedule
+2. Saves each report as an [artifact](/guides/artifacts)
+3. Streams progress live via SSE — you see sources being fetched in real-time
+4. Can be steered: "Focus more on open-source models next time"
+
+Each run builds on the task's memory, so reports improve over time.
+
+## Search provider chain
+
+Deep research uses the same search provider chain as regular web search:
+
+| Priority | Provider | API key needed? | Quality |
+|:---------|:---------|:---------------|:--------|
+| 1 | **Tavily** (if configured) | Yes ([free: 1,000/month](https://tavily.com)) | Best — purpose-built for AI research |
+| 2 | **Brave** (if configured) | Yes ([free: 2,000/month](https://brave.com/search/api/)) | Great — fast, rich snippets |
+| 3 | **DuckDuckGo** (always available) | No | Good — works out of the box |
+
+If your preferred provider fails, NIOM falls back automatically. You always get results.
+
+## Viewing results
+
+### In a conversation
+The deep research output renders with rich formatting:
+- Topic and depth level
+- Source count and quality indicators
+- Individual sources with titles, URLs, and relevance
+
+### As an artifact
+If the research was done in a task, the full report is saved as a Markdown file. Find it in the task's artifact panel or at `~/.niom/artifacts/`.
+
+<Tip>
+  Deep research works best with capable models like Claude Sonnet or GPT-4o. Fast models (Groq, etc.) may produce shorter, less thorough reports.
+</Tip>

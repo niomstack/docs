@@ -1,0 +1,79 @@
+---
+title: "Privacy & Security"
+description: "NIOM's privacy model is structural, not a feature toggle. Your data never leaves your machine."
+---
+
+NIOM's privacy guarantees aren't a settings checkbox. They're **built into the architecture**.
+
+## Core principles
+
+| Principle | How it's enforced |
+|:----------|:-----------------|
+| **No NIOM servers** | Zero telemetry, no analytics, no cloud backend, no accounts |
+| **Bring Your Own Keys** | You provide API keys for cloud models, or use Ollama for total privacy |
+| **All data is local** | Threads, memories, settings, logs → `~/.niom/` on your machine |
+| **Keys are encrypted** | API keys stored in `~/.niom/keys.enc` via OS-level encryption |
+| **Sandboxed execution** | Tool calls require explicit approval for destructive actions |
+| **Transparent memory** | You can view, edit, and delete everything NIOM remembers |
+| **No training data** | NIOM never sends your data for model training |
+
+## What data goes where
+
+### Stays on your machine (always)
+
+- Conversation threads
+- Persistent memories and preferences
+- Project analysis and context
+- Skill Tree routing data
+- Task history and results
+- Tool execution logs
+- Configuration and settings
+
+### Sent to your chosen provider (only when chatting)
+
+- The current conversation messages (what you type + NIOM's responses)
+- Tool call results (file contents, search results, etc.)
+- System prompt with relevant memory context
+
+<Note>
+  This is the same data any AI chat app sends. The difference is NIOM sends it to **your** provider with **your** API key — not through our servers. We don't see your data at all.
+</Note>
+
+## Going fully offline
+
+With [Ollama](/guides/ollama), you can run NIOM with **zero network traffic**:
+
+- Local model inference (no API calls)
+- Local embeddings for Skill Tree routing (`all-MiniLM-L6-v2` runs on-device)
+- Local file operations and shell commands
+- Local memory storage and retrieval
+
+The only features that need internet are web search and URL crawling — which inherently require network access.
+
+## Tool safety
+
+NIOM uses a permission model with escalating trust:
+
+| Tool category | Approval | Rationale |
+|:-------------|:---------|:----------|
+| **Read-only** (read, list, search, system info) | Auto-approved | Can't modify anything |
+| **Write operations** (write, propose artifact) | User approval | Shows diff preview first |
+| **Shell commands** (run) | Always requires approval | Can't be auto-trusted |
+
+Session trust is:
+- **Path-scoped** — approving writes to `/project/src/` doesn't trust `/project/config/`
+- **Session-scoped** — clears on restart (30-minute TTL)
+- **Auditable** — every tool execution is logged to `~/.niom/logs/`
+
+## Open source
+
+NIOM is fully open source under the MIT license. You can:
+
+- Audit every line of code at [github.com/niomstack/niom](https://github.com/niomstack/niom)
+- Build from source to verify nothing hidden is included
+- Fork and modify to your requirements
+- Self-host on your own infrastructure
+
+<Tip>
+  If you find a security issue, please report it responsibly via [GitHub Security Advisories](https://github.com/niomstack/niom/security/advisories). We take security seriously.
+</Tip>

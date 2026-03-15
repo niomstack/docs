@@ -1,59 +1,53 @@
 ---
-title: "NIOM — Your work, on autopilot"
-description: "An autonomous AI agent that lives on your desktop. It routes your requests through a Skill Tree, executes with the right tools, streams results live, and saves artifacts you can always find."
+title: "NIOM — AI that remembers you"
+description: "A local-first AI agent that lives on your desktop. It remembers your preferences, learns your patterns, routes every request through an intelligent Skill Tree, and runs background tasks autonomously — with any model you choose."
 ---
 
-NIOM is a desktop AI agent that runs locally on your machine. It understands what you need, picks the right tools, and gets work done — from quick questions to multi-day research projects.
+NIOM is a desktop AI agent that runs entirely on your machine. It remembers what you tell it, understands your projects, picks the right tools for every request, and executes tasks in the background while you keep working.
 
-It's not a chatbot. It's a system.
+It's not a chat wrapper. It's a system that gets smarter the more you use it.
 
 <Note>
-  NIOM is in active development (alpha). The architecture is stable and new features ship weekly.
+  NIOM is open source and free. All data stays on your machine. [View on GitHub →](https://github.com/niomstack/niom)
 </Note>
 
-## Start here
+## Get started
 
 <CardGroup cols={2}>
-  <Card title="Install in 5 minutes" icon="rocket" href="/quickstart">
-    Download, connect an AI provider, and run your first query.
+  <Card title="Install in 2 minutes" icon="rocket" href="/quickstart">
+    Download the app, add your API key, start chatting.
   </Card>
-  <Card title="How NIOM routes requests" icon="brain" href="/guides/skill-tree">
-    The Skill Tree picks the right domain. You don't configure this — it just works.
+  <Card title="Persistent memory" icon="brain" href="/guides/memory">
+    NIOM extracts facts and preferences from every conversation — and remembers them forever.
   </Card>
-  <Card title="Background tasks that stream live" icon="bolt" href="/guides/background-tasks">
-    Create tasks that run autonomously. Watch tool calls appear in real-time via SSE.
+  <Card title="Background tasks" icon="bolt" href="/guides/background-tasks">
+    Dispatch autonomous tasks that plan, execute, and checkpoint — all while you keep chatting.
   </Card>
-  <Card title="Connect 13,000+ tools" icon="plug" href="/guides/mcp">
-    GitHub, Slack, Google Drive — one line in your config.
+  <Card title="Your keys, your data" icon="lock" href="/guides/privacy">
+    100% local. Zero telemetry. Bring your own API keys or run fully offline with Ollama.
   </Card>
 </CardGroup>
 
 ## What makes NIOM different
 
 <CardGroup cols={2}>
-  <Card title="Skill Tree routing" icon="sitemap">
-    Every request flows through a Skill Tree — a graph of tools organized by domain (code, research, system, creative). NIOM picks the right 4-8 tools for your task, not all 15+. Faster. Cheaper. More accurate.
+  <Card title="Persistent memory" icon="brain">
+    Every conversation teaches NIOM something. It extracts facts, preferences, and patterns — then uses them in future conversations. "I prefer TypeScript strict mode" is remembered once, applied forever.
   </Card>
-  <Card title="Tasks stream live" icon="signal">
-    Background tasks don't disappear into a black box. Every tool call, every phase, every result streams to you via SSE — the same way conversations do. You see the work happening.
+  <Card title="Intelligent Skill Routing" icon="sitemap">
+    Every request flows through a Skill Tree — a graph of tools organized by domain. NIOM picks the right 4-8 tools for your task, not all 20+. Zero tokens used for routing.
   </Card>
-  <Card title="Artifacts you can find" icon="file-lines">
-    When NIOM creates files — articles, reports, code — they're linked to the conversation or task that made them. Find them in the UI or at `~/.niom/artifacts/`. Delete a conversation? Non-workspace artifacts clean up automatically.
+  <Card title="Background tasks" icon="signal">
+    Dispatch multi-step tasks that run autonomously: plan → execute → checkpoint → deliver. Pause, steer, or cancel anytime. Tasks survive app restarts.
   </Card>
-  <Card title="Deep research mode" icon="magnifying-glass">
-    Multi-source research across the web. NIOM fetches, reads, cross-references, and synthesizes — with source citations. Results are saved as artifacts you can always retrieve.
+  <Card title="Project awareness" icon="folder-tree">
+    NIOM auto-detects your workspaces — tech stacks, conventions, project structure. It knows you're in a React project before you tell it.
   </Card>
-  <Card title="Schedule detection" icon="calendar">
-    Say "research AI news every morning" and NIOM creates a recurring background task automatically. No manual scheduling UI. The Skill Tree detects temporal intent and routes accordingly.
+  <Card title="Multi-provider" icon="arrows-split-up-and-left">
+    Anthropic, OpenAI, Google, or Ollama. Switch models anytime. Use Claude for reasoning, GPT for vision, Llama for privacy — in the same app.
   </Card>
-  <Card title="Steerable tasks" icon="compass">
-    Post a comment to any running task. "Focus more on cost analysis" — the next run picks it up. Steering replaces the old approval model. You guide, NIOM executes.
-  </Card>
-  <Card title="Multi-model intelligence" icon="arrows-split-up-and-left">
-    Fast model for analysis (~200ms). Capable model for execution. Vision model for screenshots. NIOM picks the right one per phase. You don't manage this.
-  </Card>
-  <Card title="Your data stays local" icon="lock">
-    Everything lives at `~/.niom/`. Encrypted with AES-256-GCM. Zero telemetry. You pick your LLM provider — or run fully offline with Ollama.
+  <Card title="Summoned in a keystroke" icon="keyboard">
+    Press `⌥ Space` from any app to summon NIOM. Ask a question, run a command, start a task — and dismiss. It lives in your system tray, always ready.
   </Card>
 </CardGroup>
 
@@ -61,37 +55,37 @@ It's not a chatbot. It's a system.
 
 | You are... | NIOM helps you... |
 |:-----------|:-----------------|
-| A **developer** | Automate git workflows, search codebases, refactor files, run commands |
-| A **researcher** | Schedule recurring research, get multi-source deep dives with citations |
-| A **creator** | Generate content on schedule, organize files, manage repetitive tasks |
-| **Privacy-focused** | Run fully offline with Ollama — zero data leaves your machine |
+| A **developer** | Read/write files, run shell commands, search codebases, manage Git workflows — all through conversation |
+| A **researcher** | Search the web, crawl pages, synthesize findings, produce reports — as background tasks |
+| A **power user** | Automate repetitive workflows, manage projects, organize information across domains |
+| **Privacy-focused** | Run fully offline with Ollama — zero API calls, zero data leaves your machine |
 
-## Under the hood
+## How it works
 
 ```
-Your request → Skill Tree routes → Right tools selected → Agent executes → Results stream live
+You type → Skill Tree routes → Right tools selected → Agent executes → Memory updated → Results streamed
 ```
 
-NIOM runs as two lightweight processes:
+NIOM runs as an Electron desktop app with two processes:
 
-1. **Rust (Tauri)** — Thin OS shell (~200 lines). System tray, hotkeys, notifications.
-2. **Node.js Sidecar** — The brain. AI SDK, Skill Tree, agent engine, tools, streaming.
+1. **Main process** — Agent engine, tool execution, memory, Skill Tree routing, task orchestration
+2. **Renderer** — React UI with chat, threads, settings, task panel, and a context graph
 
-Press `Ctrl+Space` to summon the overlay. It works on macOS, Windows, and Linux.
+Press `⌥ Space` to summon the overlay from anywhere. It works on macOS, Windows, and Linux.
 
-## Go deeper
+## Explore
 
 <CardGroup cols={2}>
-  <Card title="Architecture" icon="sitemap" href="/architecture/overview">
-    The hybrid Rust + Node.js design and why it works.
+  <Card title="Memory system" icon="brain" href="/guides/memory">
+    How NIOM learns about you — and how to manage what it remembers.
   </Card>
   <Card title="Configuration" icon="gear" href="/configuration">
-    One config file. Every option explained.
+    API keys, model selection, theme, and Ollama setup.
   </Card>
   <Card title="Built-in tools" icon="wrench" href="/guides/tools">
-    Files, shell, web search, deep research, system info — what ships out of the box.
+    Files, shell, web search, page crawling — what ships out of the box.
   </Card>
-  <Card title="API Reference" icon="code" href="/api-reference/introduction">
-    Full HTTP API — SSE streaming, task management, artifacts, memory.
+  <Card title="Architecture deep dive" icon="sitemap" href="/architecture/overview">
+    The full system design — context engine, Skill Tree, task system, and more.
   </Card>
 </CardGroup>

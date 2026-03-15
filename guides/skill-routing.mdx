@@ -1,0 +1,117 @@
+---
+title: "Skill Routing"
+description: "How NIOM picks the right tools for every request — automatically, instantly, and without using any tokens."
+---
+
+When you ask NIOM something, it doesn't dump all 20+ tools into the LLM context and hope for the best. That's what most AI apps do, and it degrades accuracy as tool counts grow.
+
+Instead, NIOM routes every request through a **Skill Tree** — a hierarchical graph that selects exactly the right 4-8 tools in under 2 milliseconds.
+
+## How it works
+
+```
+Your message → Embed query → Score domains → Select top tools → Inject into agent → Execute
+```
+
+1. **You type a message** — "What's the latest funding news for AI startups?"
+2. **NIOM embeds your query** — Using a local `all-MiniLM-L6-v2` model (~5ms, on-device)
+3. **Domains are scored** — Cosine similarity against domain exemplars identifies this as "Research + Web"
+4. **Top tools are selected** — `webSearch`, `crawl`, `read` — not `writeFile`, `runCommand`, etc.
+5. **Agent executes** — The LLM only sees relevant tools, improving accuracy and reducing cost
+6. **Skill Tree learns** — Tool co-occurrence patterns are reinforced for next time
+
+<Tip>
+  Routing uses zero LLM tokens. It's pure embeddings + cosine similarity — runs entirely on your CPU in ~2ms.
+</Tip>
+
+## Domains
+
+NIOM ships with 9 built-in domains organized in a 3-tier pack architecture:
+
+### Primitive packs (system-level tools)
+
+| Pack | Tools | Purpose |
+|:-----|:------|:--------|
+| **OS** | `read`, `write`, `listDirectory`, `runCommand`, `systemInfo` | File system and shell operations |
+| **Web** | `webSearch`, `crawl`, `fetchUrl` | Web search and page extraction |
+| **Computer Use** | *(reserved)* | Vision-based desktop automation |
+
+### Intent packs (domain reasoning)
+
+| Pack | Focus | Example queries |
+|:-----|:------|:----------------|
+| **Code** | Software development | "Refactor this function", "Add error handling" |
+| **Research** | Investigation + synthesis | "What are the latest trends in AI?" |
+| **Business** | Strategy, planning, analysis | "Compare these pricing models" |
+| **Creative** | Writing, content, design | "Write a blog post about..." |
+| **Personal** | Life management, preferences | "Help me plan my week" |
+
+### Fallback pack
+
+| Pack | Purpose |
+|:-----|:--------|
+| **General** | Ambiguous queries — includes all tools |
+
+## Guaranteed domains
+
+Two domains are always included in routing results:
+
+- **OS** — Always available because most tasks involve some file or shell interaction
+- **Web** — Included for research, business, and creative domains because they often need web data
+
+## Self-improving routing
+
+NIOM's Skill Tree improves over time through **Temporal EMA Edge Learning**:
+
+- **Co-occurrence edges** — When you use `webSearch` and `crawl` together, the connection between them strengthens
+- **Pipeline edges** — When `webSearch` always leads to `crawl`, a directional pipeline edge forms
+- **Natural decay** — Stale patterns fade over 30 days if unused
+
+This means NIOM adapts to YOUR workflows. A developer who always uses `read` → `write` → `runCommand` will see those tools suggested more tightly together.
+
+The learned graph persists at `~/.niom/skill-graph.json` and carries forward across sessions.
+
+## Why not just let the LLM pick?
+
+| Approach | F1 Score | Latency | Token Cost |
+|:---------|:---------|:--------|:-----------|
+| Flat embedding (dump all tools) | 0.332 | 0.03ms | $0.00 |
+| **NIOM Skill Tree** | **0.384** (+15.7%) | **2ms** | **$0.00** |
+| LLM-based selection (Claude Opus) | 0.661 | 1,863ms | $0.257/query |
+
+The Skill Tree achieves **recall parity with Claude Opus** while being **1,025x faster** and consuming **zero tokens** for routing.
+
+<Note>
+  The Skill Tree builds itself on first launch (~8 seconds). After that, it loads from cache in milliseconds. If you install new tools, it automatically rebuilds.
+</Note>
+
+## The SKILL.md format
+
+Each domain pack is defined in a `SKILL.md` file — an open format adopted by 35+ platforms. This means community-built skills for Cursor, Claude, GitHub Copilot, and others are directly compatible with NIOM.
+
+```yaml
+---
+name: Research
+domain: research
+exemplars:
+  - "find information about"
+  - "what are the latest trends"
+  - "compare these two approaches"
+tools:
+  - webSearch
+  - crawl
+  - fetchUrl
+---
+
+You are a research specialist. Search broadly, cross-reference multiple
+sources, and synthesize findings with proper citations.
+```
+
+## Viewing your Skill Tree
+
+Open **Settings** → **Context** → switch to **Graph view** to see a visual representation of your Skill Tree powered by React Flow. You can:
+
+- See all domains and their tools as interactive nodes
+- View edge weights between tools (co-occurrence, pipeline)
+- Toggle fullscreen for a better view
+- Explore how your usage patterns have shaped the graph

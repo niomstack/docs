@@ -22,74 +22,35 @@
             ]
           },
           {
-            "group": "Guides",
+            "group": "Core Features",
             "pages": [
-              "guides/skill-tree",
-              "guides/background-tasks",
-              "guides/artifacts",
-              "guides/deep-research",
               "guides/memory",
+              "guides/skill-routing",
+              "guides/background-tasks",
               "guides/tools",
-              "guides/computer-use",
-              "guides/mcp"
+              "guides/project-awareness"
             ]
           },
           {
-            "group": "Architecture",
+            "group": "Advanced",
             "pages": [
-              "architecture/overview",
-              "architecture/sidecar",
-              "architecture/skill-tree",
-              "architecture/self-healing"
+              "guides/keyboard-shortcuts",
+              "guides/ollama",
+              "guides/privacy"
             ]
           }
         ]
       },
       {
-        "tab": "API Reference",
+        "tab": "Architecture",
         "groups": [
           {
-            "group": "Overview",
+            "group": "System Design",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Agent",
-            "pages": [
-              "api-reference/agent/run",
-              "api-reference/agent/sync"
-            ]
-          },
-          {
-            "group": "Tasks",
-            "pages": [
-              "api-reference/tasks/list",
-              "api-reference/tasks/create",
-              "api-reference/tasks/manage",
-              "api-reference/tasks/steer",
-              "api-reference/tasks/events"
-            ]
-          },
-          {
-            "group": "Artifacts",
-            "pages": [
-              "api-reference/artifacts/list",
-              "api-reference/artifacts/content"
-            ]
-          },
-          {
-            "group": "Configuration",
-            "pages": [
-              "api-reference/config/providers",
-              "api-reference/config/models",
-              "api-reference/config/mcp"
-            ]
-          },
-          {
-            "group": "Memory",
-            "pages": [
-              "api-reference/memory"
+              "architecture/overview",
+              "architecture/context-engine",
+              "architecture/skill-tree",
+              "architecture/task-system"
             ]
           }
         ]
@@ -103,9 +64,9 @@
           "icon": "github"
         },
         {
-          "anchor": "Website",
-          "href": "https://niom.dev",
-          "icon": "globe"
+          "anchor": "Releases",
+          "href": "https://github.com/niomstack/niom/releases",
+          "icon": "download"
         }
       ]
     }
@@ -124,7 +85,7 @@
     "primary": {
       "type": "button",
       "label": "Download",
-      "href": "https://niom.dev"
+      "href": "https://github.com/niomstack/niom/releases"
     }
   },
   "footer": {

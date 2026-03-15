@@ -1,0 +1,99 @@
+---
+title: "Ollama (Local Models)"
+description: "Run NIOM fully offline with Ollama — zero API calls, zero cloud, complete privacy."
+---
+
+NIOM works with local models via [Ollama](https://ollama.ai). This means you can run NIOM with **zero internet connection, zero API keys, and zero data leaving your machine**.
+
+## Setup
+
+<Steps>
+<Step title="Install Ollama">
+
+```bash
+# macOS / Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# macOS (Homebrew)
+brew install ollama
+
+# Windows — download from https://ollama.ai
+```
+
+</Step>
+<Step title="Pull a model">
+
+```bash
+# Recommended for general use
+ollama pull llama3.1
+
+# Recommended for coding
+ollama pull codellama:13b
+
+# Smaller / faster
+ollama pull phi3:mini
+```
+
+</Step>
+<Step title="Configure NIOM">
+
+NIOM auto-detects Ollama at `http://localhost:11434`. Just select "Ollama (Local)" as your provider in Settings and pick a model.
+
+No API key needed.
+
+</Step>
+</Steps>
+
+## Recommended models
+
+| Model | Size | Best for |
+|:------|:-----|:---------|
+| `llama3.1` | 8B | General purpose — balanced speed + quality |
+| `llama3.1:70b` | 70B | High quality reasoning (needs 40GB+ VRAM) |
+| `codellama:13b` | 13B | Code generation and analysis |
+| `phi3:mini` | 3.8B | Fast responses, limited reasoning |
+| `mistral:7b` | 7B | Good all-rounder |
+
+<Warning>
+  Smaller models (3B-7B) may struggle with complex multi-tool tasks. For the best experience with background tasks, use 13B+ models.
+</Warning>
+
+## Hardware requirements
+
+| Model size | Min RAM | Recommended GPU |
+|:-----------|:--------|:----------------|
+| 3B-7B | 8GB | Any GPU with 4GB+ VRAM |
+| 13B | 16GB | GPU with 8GB+ VRAM |
+| 70B | 64GB | GPU with 40GB+ VRAM |
+
+<Tip>
+  On Apple Silicon Macs, Ollama uses the unified memory — no separate GPU needed. A MacBook Pro with 16GB handles 7B models smoothly.
+</Tip>
+
+## What works offline
+
+With Ollama, NIOM works fully offline for:
+
+- ✅ Chat conversations
+- ✅ File operations (read, write, list)
+- ✅ Shell commands
+- ✅ Memory (extraction and recall)
+- ✅ Skill Tree routing (uses local embeddings)
+- ✅ Background tasks
+
+The only features that need internet:
+
+- ❌ Web search (no internet = no search)
+- ❌ URL crawling (no internet = can't fetch pages)
+
+## Custom Ollama URL
+
+If Ollama runs on a different port or a separate machine on your network:
+
+```json
+{
+  "ollamaUrl": "http://192.168.1.100:11434"
+}
+```
+
+This enables cool setups like running a powerful model on your desktop while using NIOM on your laptop.

@@ -1,143 +1,131 @@
 ---
 title: "Background Tasks"
-description: "Autonomous tasks that stream progress live. Steer them with comments. They remember what worked."
+description: "Dispatch autonomous multi-step tasks that plan, execute, and checkpoint — all while you keep chatting."
 ---
 
-NIOM's background tasks execute autonomously — researching, writing, monitoring, whatever you need. Unlike a chatbot that forgets when you close the window, tasks survive restarts, learn from each run, and stream every tool call to you in real-time.
+Background Tasks are NIOM's superpower for complex, multi-step work. Instead of waiting for a single long response, you dispatch a task and keep chatting while NIOM works autonomously.
 
-## What you can automate
+## What is a Task?
 
-<CardGroup cols={2}>
-  <Card title="Scheduled research" icon="magnifying-glass">
-    "Research AI news every morning" — NIOM runs deep research on schedule, saves each report as an artifact.
-  </Card>
-  <Card title="Content generation" icon="pen-to-square">
-    "Write a tech summary every 2 days" — recurring content that improves with each run thanks to task memory.
-  </Card>
-  <Card title="One-shot work" icon="bolt">
-    "Deeply research quantum computing" — a single long-running task that runs in the background while you work.
-  </Card>
-  <Card title="Monitoring" icon="eye">
-    "Watch my project for TODO comments and list them" — periodic checks on whatever you care about.
-  </Card>
-</CardGroup>
+A Task is a **multi-phase, pausable, background workflow**. Think of it as giving NIOM a mission.
 
-## Creating tasks
+| | Regular chat | Background task |
+|:---|:------------|:----------------|
+| **Duration** | Seconds to minutes | Minutes to hours |
+| **Phases** | Single response | Plan → Execute → Synthesize |
+| **Interaction** | Foreground (streaming) | Background (progress updates) |
+| **Interruption** | Cancel | Pause / resume / steer / checkpoint |
+| **Result** | Streamed text | Structured deliverable |
 
-You don't need a special UI. Just describe what you want in a conversation:
+## Creating a task
 
-```
-"Suggest AI tech short articles everyday so I can post on sub"
-```
+### From conversation
 
-NIOM's [Skill Tree](/guides/skill-tree) detects the scheduling intent and automatically creates a background task. You'll see:
-1. A task created with a goal, schedule, and execution plan
-2. The first run starts immediately
-3. Progress streams live in the task panel
+Type a complex request naturally. If NIOM detects it's better suited as a background task, it suggests:
 
-You can also create tasks via the API:
-```bash
-curl -X POST http://localhost:3001/tasks \
-  -H "Content-Type: application/json" \
-  -d '{
-    "goal": "Research the latest AI news and write a brief summary",
-    "taskType": "recurring",
-    "schedule": { "interval": "daily" }
-  }'
-```
+> _"This looks like it could take a while. Run as a background Task?"_
 
-## Live streaming
+Detection signals include:
+- Multi-step goals ("research X, then compare Y, then write Z")
+- Temporal markers ("over the next week", "every day")
+- Cross-domain work (research + writing + code)
+- Keywords like "deeply", "comprehensive", "full report"
 
-Tasks stream their progress via SSE — the same way conversations do. You see every tool call as it happens:
+### Explicit mode
+
+Click the **⚡ Task toggle** next to the send button in the prompt box. When active, your next message dispatches as a Task instead of a regular chat message.
+
+You can also use task templates — pre-built workflows for common scenarios like research reports, code reviews, and competitive analysis.
+
+## The three phases
+
+### Phase 1: Plan
+
+NIOM decomposes your goal into 3-7 concrete steps. You see the plan before any work begins:
 
 ```
-⏳ Run #1 started
-  🔍 Searched: "latest AI news March 2026"
-  🌐 Fetched: techcrunch.com/ai-roundup
-  🌐 Fetched: arxiv.org/latest/cs.AI
-  📝 Wrote: ai_research_summary.md
-✅ Run #1 completed (45.2s, 7 tools)
+📋 Plan for "Research AI agent frameworks and compare them"
+
+Step 1: Search for popular AI agent frameworks in 2026
+Step 2: Deep-dive into the top 5 candidates
+Step 3: Compare features, pricing, and architecture
+Step 4: Synthesize findings into a comparison report
+
+Estimated: ~4 minutes | ~2K tokens
 ```
 
-The task panel auto-expands running tasks and shows:
-- Live tool status ("Running: Deep Research")
-- Each tool call with its input and output
-- Phase progress for multi-step tasks
-- Quality score on completion
+You can **approve**, **modify**, or **reject** the plan. Nothing executes until you say go.
 
-**No polling.** The frontend builds its state directly from SSE events. When a tool call finishes on the backend, it appears in the UI immediately.
+### Phase 2: Execute
 
-## Steering
-
-Steering replaces the old approval model. Instead of approve/deny, you **guide** running tasks with comments:
+Each step runs as an independent agent call with full access to NIOM's tools and Skill Tree routing. Progress streams in real-time:
 
 ```
-"Focus more on open-source models in the next run"
+🔄 Step 1/4: Searching for AI agent frameworks...
+  ✅ webSearch: "AI agent frameworks 2026" → 12 results
+  ✅ crawl: langchain.dev → extracted 2.3K words
+  ✅ crawl: crewai.com → extracted 1.8K words
+✅ Step 1 complete
+
+🔄 Step 2/4: Deep-diving top candidates...
 ```
 
-Post a steering comment from the task panel. It flows into the next run as additional context. The agent reads your feedback and adjusts its approach.
+### Phase 3: Synthesize
 
-Steering works because:
-- Comments are stored in task memory
-- Each run receives the full history of previous steering comments
-- The agent adapts based on accumulated feedback
+After all steps complete, NIOM produces a final deliverable — a report, summary, code, or whatever the task calls for. The result appears as a rich message in your thread.
 
-## Task memory
+## Checkpoints
 
-Every task maintains a persistent memory that includes:
-- **Previous run outputs** — what was produced, what worked
-- **Steering comments** — your accumulated feedback
-- **Tool usage history** — which tools succeeded, which failed
-- **Quality evaluations** — how each run was scored
+Tasks can **pause and ask for your input** at critical moments:
 
-This means run #5 is better than run #1 — the agent learns from its own execution history.
+### Mandatory checkpoints
+- **After planning** — You always review the plan before execution
+- **On error** — When a step fails and can't self-recover
 
-## Task lifecycle
+### Configurable checkpoints
+- **After every N steps** — Default: after every step (conservative). Adjust via task templates.
+- **On significant findings** — The agent can flag unexpected or contradictory results
 
-Tasks are persistent — they survive overlay closes, sidecar restarts, and machine reboots:
+When a checkpoint appears, you see a card in the thread with three options:
 
-```
-draft → planned → scheduled → flowing (executing) → completed
-                      ↑             ↓
-                   resume         pause
-                      ↑             ↓
-                    paused ←────────┘
-```
+- **Continue** — Proceed as planned
+- **Modify direction** — Type new guidance, NIOM adjusts and continues
+- **Stop here** — Cancel the remaining steps, keep what's done
 
-**Actions you can take:**
-- **Run Now** — trigger an immediate execution, regardless of schedule
-- **Pause / Resume** — temporarily stop or restart a task
-- **Steer** — post a comment that influences the next run
-- **Edit** — change the goal, schedule, or other settings
-- **Delete** — removes the task and cleans up non-workspace artifacts
+## Managing tasks
 
-## Artifacts from tasks
+### In your thread
 
-Files created during task execution are automatically registered as [artifacts](/guides/artifacts):
-- Find them in the task's detail panel
-- Or navigate to `~/.niom/artifacts/{task-id}/`
-- If the task has a workspace, artifacts go to your project instead
+The **Task Panel** in the prompt area shows:
+- Active tasks with live progress
+- Step list (✅ completed, 🔄 current, ⏳ pending)
+- Quick actions: Pause / Resume / Cancel
 
-## Native notifications
+### Global view
 
-Task events trigger real desktop notifications (via Tauri — not just in-app alerts):
-- ✅ **Completed** — "Task Complete: Research AI news..."
-- ❌ **Failed** — with error description
-- These notifications work even when the overlay is closed
+The **Home screen** shows all tasks across all threads:
+- Filterable by status: Running | Paused | Completed | Failed
+- Each card shows: goal, source thread, progress, elapsed time
+- Click a task → navigate to the source thread
 
-## SSE event types
+## Error handling
 
-For developers building integrations, the task event stream (`GET /tasks/events`) emits:
+Tasks handle errors at three levels:
 
-| Event | Payload | When |
-|:------|:--------|:-----|
-| `task:start` | `{ taskId, runId, runNumber, startedAt, phases }` | A run begins |
-| `task:tool` | `{ taskId, runId, tool, input, output }` | A tool call completes |
-| `task:phase` | `{ taskId, phase, status }` | A phase changes status |
-| `task:complete` | `{ taskId, runId, status, output, durationMs, qualityScore }` | A run finishes |
-| `task:error` | `{ taskId, runId, error }` | A run fails |
-| `task:steer` | `{ taskId, comment }` | A steering comment is posted |
+| Level | What | Handling |
+|:------|:-----|:---------|
+| **Tool-level** | A tool call fails | Automatic retry (up to 3x) via agent self-correction |
+| **Step-level** | An entire step fails | Checkpoint card: Retry / Skip / Stop |
+| **System-level** | API error, rate limit, network | Auto-backoff and retry. Pauses if persistent. |
 
-<Tip>
-  See the [Tasks Events API](/api-reference/tasks/events) for full SSE documentation.
-</Tip>
+## Task persistence
+
+Tasks are **crash-safe**. They save state to `~/.niom/tasks/` after every step. If NIOM restarts:
+
+- Completed steps are preserved
+- Running steps resume from the last checkpoint
+- Failed steps can be retried
+
+<Note>
+  Tasks run in the main process. They survive the app being minimized or the tray icon being idle, but not the app being fully quit.
+</Note>

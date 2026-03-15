@@ -1,143 +1,143 @@
 ---
 title: "Skill Tree Architecture"
-description: "Deep dive: embedding space, graph traversal, co-occurrence learning, and the resolver pipeline."
+description: "Deep dive into NIOM's hierarchical tool selection system — how it achieves recall parity with LLM-based routing at 1,025x the speed."
 ---
 
-The Skill Tree is NIOM's tool selection engine. It solves the "tool explosion" problem — when an agent has 15+ tools, the LLM wastes tokens processing irrelevant options and accuracy drops. The Skill Tree dynamically selects 4-8 focused tools per request.
+The Skill Tree is NIOM's intelligent routing system. It's a **directed acyclic graph (DAG)** that selects the right tools for every user request — without making a single LLM call.
+
+> Based on the research paper: *"Skill Trees for AI Agents: Hierarchical Tool Selection via Self-Improving Graphs"* (Singh, Bhargavi, Singh — Obelysk, 2026)
 
 ## The problem
 
-Traditional AI agents dump all available tools into the system prompt. With 15+ tools (built-in + MCP), this means:
-- **Slower** — more tokens in context = longer inference
-- **Expensive** — every tool description costs tokens
-- **Less accurate** — the model gets confused by irrelevant tools
+As tool inventories grow, LLM tool selection accuracy degrades sharply:
 
-The Skill Tree resolves a focused subset per request.
+| Tool count | Accuracy |
+|:-----------|:---------|
+| 5 tools | ~95% |
+| 15 tools | ~82% |
+| 30 tools | ~68% |
+| 50+ tools | Sharp degradation |
 
-## Architecture overview
+Most AI apps either dump all tools into the context (degrading quality) or hard-code routing rules (no adaptability). NIOM's Skill Tree solves both.
 
-```
-User message
-  ↓
-┌──────────────────────────────────────────────┐
-│ 1. Domain Classification (fast model, ~200ms) │
-│    Intent → Domain: "code", "research", etc.  │
-├──────────────────────────────────────────────┤
-│ 2. Skill Pack Lookup                          │
-│    Domain → SkillPack → Base tool set         │
-├──────────────────────────────────────────────┤
-│ 3. Co-occurrence Boosting                     │
-│    Past success patterns boost tool weights   │
-├──────────────────────────────────────────────┤
-│ 4. Schedule Detection (Tier 1 + Tier 2)       │
-│    Temporal intent → override execution mode  │
-├──────────────────────────────────────────────┤
-│ 5. SkillPath Output                           │
-│    Focused tool set (4-8) + execution config  │
-└──────────────────────────────────────────────┘
-  ↓
-Agent executes with selected tools
-```
+## Data structures
 
-## Components
+### SkillNode
 
-### Domain Router (`router.ts`)
+Represents a domain or tool in the graph. Carries:
+- Embeddings and exemplar embeddings
+- Usage statistics (invocations, last used)
+- Parent/child relationships
+- Pack membership
 
-The entry point. Uses the fast model to classify a user message into one of the registered domains. The classification prompt is deterministic — same message always routes to the same domain.
+Types: `root` → `domain` → `subdomain` → `tool`
 
-Domains are defined by Skill Packs (see below). The router scores each domain and selects the highest-confidence match.
+### SkillEdge
 
-### Skill Packs (`packs/`)
+Weighted, typed edges between nodes:
 
-Each domain has a Skill Pack — a directory containing a `pack.json` that defines:
-- **Domain name** — e.g., `code`, `research`, `creative`
-- **Description** — what this domain handles
-- **Keywords** — routing hints for the fast model
-- **Tool set** — which built-in tools to include
-- **System prompt additions** — domain-specific instructions
+| Edge type | Created by | Evolves by |
+|:----------|:-----------|:-----------|
+| `hierarchy` | Install-time (pack structure) | Never decayed — structural |
+| `semantic` | Install-time (cosine sim > 0.6) | Decayed if unused |
+| `cooccurrence` | Runtime (tools used together) | Reinforced on co-use, decayed over time |
+| `pipeline` | Runtime (tool B follows tool A) | Reinforced on sequential use |
 
-Built-in packs: `code`, `research`, `creative`, `business`, `personal`, `general`.
+### SkillPath
 
-### Skill Graph (`graph.ts`)
-
-Tracks tool co-occurrence — which tools tend to succeed together. Stored at `~/.niom/skill-graph.json`.
-
-The graph is a weighted adjacency matrix where:
-- **Nodes** = tools
-- **Edges** = co-occurrence frequency
-- **Weights** = success-weighted count
-
-When `webSearch` → `fetchUrl` → `writeFile` co-occur in a successful run, edges between these three tools are strengthened. Over time, selecting one tool boosts the weight of tools that commonly co-occur with it.
-
-### Traversal Engine (`traversal.ts`)
-
-The core resolver. Takes a user message and produces a `SkillPath`:
-
-1. **Domain classification** — ask the fast model which domain matches
-2. **Pack lookup** — get the base tool set from the matched Skill Pack
-3. **Graph boosting** — overlay co-occurrence weights to adjust tool selection
-4. **MCP merge** — add relevant MCP tools if connected
-5. **Schedule detection** — check for temporal intent (2-tier)
-6. **Cache** — store the result for similar future queries
-
-The output is a `SkillPath`: `{ domain, tools, executionMode, confidence }`.
-
-### Schedule Detection (`intent-validator.ts`)
-
-A 2-tier system that detects scheduling intent:
-
-**Tier 1 — Pattern matching** (zero latency):
-- Regex-based: detects "every day", "weekly", "in 2 hours", "daily", etc.
-- Only fires on high-confidence patterns
-
-**Tier 2 — LLM validation** (conditional, ~500ms):
-- Fires when: ambiguous domain scores, weak temporal language, action+temporal combos
-- Does NOT fire when: high-confidence single domain, simple queries, greetings
-- Uses the fast model with structured output (Zod schema)
-- Only applies override if confidence > 0.7
-
-### Embeddings (`embeddings.ts`)
-
-Pre-computed embeddings for tool descriptions and domain keywords. Used for semantic similarity matching when routing ambiguous queries.
-
-## Data flow
+The output of traversal — what gets injected into the agent:
 
 ```typescript
-// 1. User sends: "Research quantum computing and write a report"
-const path = await resolve(message, context);
-
-// 2. Result:
 {
-  domain: "research",
-  tools: ["webSearch", "deepResearch", "fetchUrl", "readFile", "writeFile"],
-  executionMode: "direct",
-  confidence: 0.92,
-  systemPromptAdditions: "You are a research specialist..."
+  tools: Tool[],              // Selected tool subset (4-8 typical)
+  primaryDomain: string,      // Top-scoring domain
+  secondaryDomains: string[], // Supporting domains
+  confidence: number,         // Routing confidence (0-1)
+  systemPromptFragments: string[], // Domain-specific personality
+  stepBudget: number          // Max agent steps for this query type
 }
-
-// 3. Agent executes with only these 5 tools (not all 15+)
 ```
 
-## Learning loop
+## Three-phase routing pipeline
 
-After each run, the Skill Graph is updated:
+| Phase | When | Latency | What happens |
+|:------|:-----|:--------|:-------------|
+| **A: Install-time** | First launch | ~8s (then cached) | Parse packs, embed exemplars, build DAG, persist |
+| **B: Type-time** | On user input | **~2ms** | Embed query, hierarchical traversal, resolve SkillPath |
+| **C: Send-time** | On send | ~0ms | Inject cached SkillPath into agent `prepareCall` |
+
+## Exemplar embeddings
+
+The key insight: standard embedding models produce near-zero cosine similarity between short user queries and long tool descriptions. NIOM uses **two-level exemplar embeddings** to fix this:
+
+### Domain exemplars (5-13 per domain)
+Short phrases that capture when a domain should activate:
+- "read this file"
+- "run the build command"
+- "search for information"
+
+### Tool exemplars (2-4 per tool)
+Usage-oriented phrases:
+- "save this report to a file"
+- "create a new document with this content"
+
+Scoring uses **max-similarity** — `max(cos(query, exemplar_i))` — so ANY exemplar matching activates the domain/tool.
+
+## Hierarchical traversal algorithm
 
 ```
-Run completes
-  → Extract tool calls that succeeded
-    → Update co-occurrence edges
-      → Save to skill-graph.json
-        → Next resolution uses updated weights
+1. Embed user query
+2. Score all domains: max-sim(query, domain_exemplars) + usage_boost
+3. Select top-3 domains + OS (guaranteed) + Web (if research/business/creative)
+4. Score tools within selected domains: cosine_sim + domain_boost + cooccurrence_bonus
+5. Apply tiered adaptive cutoff:
+   - Primitive tools: relaxed cutoff (mean)
+   - Intent tools: strict cutoff (mean + 0.25 * stddev)
+   - Clamp: 3-6 tools per domain
+6. Build SkillPath, cache with LRU (30s TTL)
 ```
 
-This means the Skill Tree gets more accurate over time — personalized to your specific usage patterns.
+Total comparisons: ~98 per query (vs ~19 for flat). The ~2ms overhead is imperceptible.
 
-## Performance
+## Temporal EMA edge learning
 
-| Metric | Value |
-|:-------|:------|
-| Domain classification | ~200ms (fast model) |
-| Full resolution | ~300ms (with Tier 2) |
-| Cache hit | ~1ms |
-| Tools selected | 4-8 (vs 15+ without Skill Tree) |
-| Accuracy improvement | Measurable after ~30 interactions |
+After each tool execution, NIOM updates edges:
+
+```
+w(t+1) = w(t) · exp(-λ · dt) + α · (1 - w(t) · exp(-λ · dt))
+```
+
+Where:
+- `α = 0.15` — learning rate (diminishing returns)
+- `λ = ln(2) / 30 days` — 30-day half-life
+- `dt` — time since last reinforcement
+
+Properties:
+- **Fast learning** — 0 to 0.15 on first reinforcement
+- **Gradual decay** — 50% strength after 30 days unused
+- **Asymptotic** — approaches 1.0 but never reaches it
+- **Automatic** — no manual intervention needed
+
+## Benchmark results
+
+On a 300-query benchmark across 6 domains:
+
+| Metric | Flat embedding | Skill Tree | LLM (Claude Opus) |
+|:-------|:--------------|:-----------|:-------------------|
+| **F1** | 0.332 | **0.384** (+15.7%) | 0.661 |
+| **Recall** | 0.714 | **0.660** | 0.650 |
+| **Latency** | 0.03ms | **2.0ms** | 1,863ms |
+| **LLM calls** | 0 | **0** | 300 |
+| **Cost** | $0.00 | **$0.00** | $0.257 |
+
+The Skill Tree achieves **recall parity with Claude Opus** while being **1,025x faster** and consuming **zero tokens.**
+
+## Implementation
+
+| File | Lines | Purpose |
+|:-----|:------|:--------|
+| `skills/graph.ts` | ~380 | DAG management, persistence, graph construction |
+| `skills/traversal.ts` | ~726 | Hierarchical scoring, cutoffs, caching |
+| `skills/embeddings.ts` | ~330 | `all-MiniLM-L6-v2` via ONNX, LRU cache, hash fallback |
+| `skills/edge-learning.ts` | ~360 | Temporal EMA updates, co-occurrence, pipeline, decay |
+| `skills/builtin-packs.ts` | ~580 | 9 built-in pack definitions with exemplars |

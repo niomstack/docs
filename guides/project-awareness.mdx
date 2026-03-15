@@ -1,0 +1,53 @@
+---
+title: "Project Awareness"
+description: "NIOM auto-detects your workspaces — tech stacks, conventions, and project structure — so it understands your code before you explain it."
+---
+
+NIOM doesn't treat every conversation as a blank slate. It **scans your workspace directories** and builds a project profile — so it knows you're working in a "React + TypeScript + Vite" project before you tell it.
+
+## How it works
+
+On startup, NIOM scans configured workspace roots and indexes each project:
+
+1. **Detection** — Identifies projects by looking for `package.json`, `Cargo.toml`, `pyproject.toml`, `go.mod`, and other markers
+2. **Analysis** — Reads config files to extract tech stacks, frameworks, and tooling
+3. **Convention extraction** — Identifies patterns like directory structure, naming conventions, and build systems
+4. **Indexing** — Stores the profile in `~/.niom/context/projects/<hash>/context.json`
+
+## What gets detected
+
+| Signal | Examples detected |
+|:-------|:-----------------|
+| **Languages** | TypeScript, JavaScript, Python, Rust, Go |
+| **Frameworks** | React, Next.js, Vite, Electron, FastAPI, Actix |
+| **Package managers** | npm, pnpm, yarn, cargo, pip, poetry |
+| **Build tools** | Webpack, Vite, esbuild, tsc |
+| **Linting/formatting** | ESLint, Prettier, rustfmt, ruff |
+| **Testing** | Jest, Vitest, pytest, cargo test |
+| **Conventions** | `src/` layout, component patterns, naming style |
+
+## How it's used
+
+When you chat from within a recognized project workspace, NIOM injects the project profile into the agent context. This means:
+
+- **Code generation** matches your stack — TypeScript if that's what you use, with your import style
+- **Commands** use your package manager — `npm run dev`, not `yarn dev` when you use npm
+- **File paths** are relative to your project root
+- **Suggestions** align with your existing patterns
+
+## Viewing your projects
+
+Open **Settings** → **Context** tab to see all indexed projects:
+
+- Project name and root path
+- Detected technologies
+- Number of conventions learned
+- Last scan timestamp
+
+<Tip>
+  Project scanning is fast (~500ms for most workspaces) and runs asynchronously on startup. It won't slow down app launch.
+</Tip>
+
+## Multiple workspaces
+
+NIOM supports multiple workspace roots. Each project within those roots gets its own context profile. When you reference files in a specific project, NIOM applies that project's conventions.

@@ -1,122 +1,99 @@
 ---
-title: "Long-Term Memory"
-description: "NIOM remembers facts about you across sessions — your preferences, your projects, your patterns. It gets smarter the more you use it."
+title: "Persistent Memory"
+description: "NIOM remembers what you tell it — preferences, facts, patterns. Your AI gets smarter with every conversation."
 ---
 
-NIOM learns about you over time. As you chat, it extracts key facts — your name, preferred languages, current projects — and stores them encrypted in `~/.niom/memory/brain/`. These facts are injected into every conversation and influence how the [Skill Tree](/guides/skill-tree) routes your requests.
+NIOM's memory system is what separates it from every other AI chat app. While others start from zero every conversation, NIOM **remembers**.
 
 ## How it works
 
-```
-You chat normally
-  → Every ~6 messages, NIOM auto-extracts facts
-    → Facts stored encrypted in brain/knowledge.enc
-      → Next conversation loads brain context into system prompt
-        → Skill Tree uses memory to refine domain routing
-```
+After every conversation, NIOM runs a lightweight extraction pass that identifies:
 
-The extraction happens **asynchronously** after a thread is saved — it doesn't slow down your conversation. NIOM uses the fast model (e.g., Groq Llama 3.3) to identify facts, keeping costs negligible.
+- **Facts** — "I work at Acme Corp", "My project uses Next.js 15"
+- **Preferences** — "I prefer TypeScript strict mode", "I like dark backgrounds"
+- **Patterns** — "When I ask about code, I usually mean the niom project"
+- **Corrections** — "Actually, I meant Python, not JavaScript" updates the existing memory
+
+These are automatically organized into a **NIOM Context Filesystem (NCF)** — a tiered hierarchy that lives at `~/.niom/context/`.
+
+<Note>
+  Memory extraction happens automatically. You don't need to do anything special — just talk to NIOM naturally.
+</Note>
+
+## The three tiers
+
+NIOM uses an OpenViking-inspired tiered loading system to optimize token usage:
+
+| Tier | Size | What it contains | When it's used |
+|:-----|:-----|:-----------------|:---------------|
+| **L0 (Abstract)** | ~100 tokens | One-line summary of each memory | Always loaded — every conversation |
+| **L1 (Overview)** | ~2K tokens | Structured detail, key facts | Loaded when the topic is relevant |
+| **L2 (Full Detail)** | Variable | Complete context, full histories | Loaded on explicit demand |
+
+This means NIOM always has broad awareness of everything it knows about you (L0), loads relevant detail when needed (L1), and pulls full context only when deep-diving (L2).
+
+## Recall mode
+
+The **Recall** toggle in the prompt box controls whether NIOM injects memories into the current conversation.
+
+- **Recall ON** — NIOM searches its memory for relevant context and includes it in the system prompt. The model sees what NIOM knows about you.
+- **Recall OFF** — Clean conversation with no memory injection. Useful for when you want a generic response.
+
+<Tip>
+  Recall is ON by default. Toggle it off when you want NIOM to respond without any personal context — like when helping someone else.
+</Tip>
 
 ## What NIOM remembers
 
-NIOM's brain stores three types of information:
+The memory filesystem is organized by category:
 
-| Type | Examples | How it learns |
-|:-----|:---------|:-------------|
-| **Facts** | "User's name is Arka", "Works on the NIOM project" | Auto-extracted from conversations |
-| **Preferences** | `language → TypeScript`, `style → concise` | Auto-extracted or manually set |
-| **Patterns** | Recurring workflows, common requests | Auto-detected over time |
-
-### Fact extraction intelligence
-
-The extraction system doesn't just dump everything — it's selective:
-- **Merges duplicates** — if you mention your name twice in different conversations, it stores one fact, not two
-- **Prioritizes actionable info** — preferences that affect tool selection, project context, tech stack
-- **Skips ephemeral context** — doesn't memorize one-off questions or transient details
-- **Uses structured output** — Zod schema ensures clean, parseable facts every time
-
-## How memory influences the Skill Tree
-
-Brain context feeds into the [Skill Tree](/guides/skill-tree) in two ways:
-
-1. **System prompt enrichment** — every agent invocation includes your facts, so the model knows your tech stack, preferences, and context before you say anything
-2. **Domain affinity** — if your memory shows you primarily write TypeScript and work on web projects, the Skill Tree subtly weights the Code domain higher for ambiguous requests
-
-This means NIOM gets more accurate over time without any explicit training — it's just paying attention to who you are.
-
-## Managing your memory
-
-### Settings UI
-
-Open **Settings → Memory** to:
-- View all stored facts and preferences
-- Add facts manually (e.g., "I prefer dark mode in all apps")
-- Add preferences (key → value pairs)
-- Remove individual facts
-- Clear all brain memory
-
-### API
-
-You can also manage memory programmatically:
-
-<CodeGroup>
-```bash View brain
-curl http://localhost:3001/memory/brain
+```
+~/.niom/context/
+├── user/                    # About you
+│   ├── brain.json           # Core identity: name, timezone, preferences
+│   └── preferences/         # Domain-specific preferences
+│       ├── coding.json      # "Uses TypeScript, prefers strict mode"
+│       └── communication.json
+├── projects/                # Your workspaces
+│   └── <workspace-hash>/
+│       └── context.json     # Tech stack, conventions, structure
+└── agent/                   # Operational context
+    └── memories/            # Extracted facts and patterns
 ```
 
-```bash Add a fact
-curl -X POST http://localhost:3001/memory/brain/fact \
-  -H "Content-Type: application/json" \
-  -d '{"fact": "I prefer TypeScript over JavaScript"}'
-```
+## Managing your memories
 
-```bash Set a preference
-curl -X POST http://localhost:3001/memory/brain/pref \
-  -H "Content-Type: application/json" \
-  -d '{"key": "editor", "value": "VS Code"}'
-```
+Open **Settings** → **Context** tab to:
 
-```bash Remove a fact
-curl -X DELETE http://localhost:3001/memory/brain/fact \
-  -H "Content-Type: application/json" \
-  -d '{"fact": "I prefer TypeScript over JavaScript"}'
-```
-
-```bash Clear all memory
-curl -X DELETE http://localhost:3001/memory/brain
-```
-</CodeGroup>
-
-## Task memory vs brain memory
-
-NIOM has two memory systems — don't confuse them:
-
-| | Brain memory | Task memory |
-|:--|:------------|:------------|
-| **Scope** | Global — applies to all conversations | Per-task — scoped to one task |
-| **What it stores** | Facts, preferences, patterns about you | Run history, steering comments, tool results |
-| **How it learns** | Auto-extracted from conversations | Built during task execution |
-| **Where it lives** | `~/.niom/memory/brain/knowledge.enc` | `~/.niom/memory/runs/{task-id}/` |
-| **Used by** | Every conversation + Skill Tree | Only that specific task's future runs |
-
-Both are encrypted with AES-256-GCM.
-
-## Privacy
+- **View all memories** — See everything NIOM has learned, organized by category
+- **Delete individual memories** — Remove anything you don't want NIOM to remember
+- **View the Context Graph** — A visual React Flow graph showing the relationships between your memories, projects, and preferences
+- **Check stats** — Total memory count, project count, index size
 
 <Note>
-  Brain data is **encrypted at rest** with AES-256-GCM, just like conversations and tasks. It never leaves your machine. Facts are only extracted from your local conversations — nothing is sent to any external service beyond your chosen LLM provider.
+  NIOM is transparent. You can see, edit, and delete everything it remembers. There are no hidden memories or data NIOM keeps that you can't see.
 </Note>
 
-## How it improves NIOM
+## Project awareness
 
-With brain context, NIOM can:
+NIOM automatically scans your workspace directories and indexes:
 
-- **Skip repetitive questions** — it already knows your name, stack, and preferences
-- **Tailor responses** — if it knows you use TypeScript, it won't suggest Python solutions
-- **Build on past context** — "continue working on the NIOM project" just works
-- **Personalize tone** — matching your preferred communication style over time
-- **Route more accurately** — the [Skill Tree](/guides/skill-tree) uses your profile to resolve ambiguous requests
+- **Tech stacks** — frameworks, languages, package managers detected from config files
+- **Conventions** — code style, directory structure patterns
+- **Project metadata** — name, root path, when it was last analyzed
 
-<Tip>
-  Memory is most useful after 3-5 conversations. That's enough for NIOM to build a solid profile of who you are and how you work.
-</Tip>
+This context is injected when you're working within a recognized project, so NIOM knows you're in a "React + TypeScript + Vite project" before you tell it.
+
+## How memory makes NIOM better
+
+Here's a concrete example of memory in action:
+
+**Day 1:**
+> You: "Help me set up a new Node.js project"
+> NIOM: Sets up a basic Node.js project with JavaScript
+
+**Day 2** (after NIOM has learned your preferences):
+> You: "Help me set up a new Node.js project"
+> NIOM: Sets up a TypeScript project with strict mode, ESLint, your preferred structure — because it remembers your preferences from previous conversations
+
+**This is the "gets smarter with use" property.** Every conversation teaches NIOM something. Over time, it stops asking clarifying questions it already knows the answer to.

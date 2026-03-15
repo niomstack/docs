@@ -1,89 +1,104 @@
 ---
 title: "Built-in Tools"
-description: "Files, shell, web search, deep research, and more — what NIOM can do out of the box."
+description: "Every tool NIOM ships with — file operations, shell commands, web search, page crawling, and more."
 ---
 
-NIOM ships with a powerful set of tools that the agent selects automatically via the [Skill Tree](/guides/skill-tree). Every tool is workspace-aware — file paths resolve relative to the workspace in your config.
+NIOM ships with a set of powerful built-in tools. The [Skill Tree](/guides/skill-routing) automatically picks the right ones for each request — you never need to specify which tool to use.
 
-## File tools
+## Tool inventory
 
-| Tool | What it does |
-|:-----|:------------|
-| `readFile` | Reads the contents of a text file |
-| `readFileRange` | Reads a specific line range from a file (for targeted context) |
-| `writeFile` | Creates or overwrites a file. Auto-registers as an [artifact](/guides/artifacts) |
-| `editFile` | Find-and-replace within a file — surgical edits without rewriting the whole file |
-| `listDirectory` | Lists files and folders with metadata (size, type) |
-| `searchFiles` | Searches for files by name pattern across your workspace |
-| `deleteFile` | Deletes a file (requires your approval first) |
+### File system
 
-All paths resolve relative to your `workspace` setting. Files created by `writeFile` are automatically tracked as [artifacts](/guides/artifacts).
+| Tool | What it does | Needs approval? |
+|:-----|:------------|:----------------|
+| **read** | Reads file contents or lists directory contents. Auto-detects file vs directory. | ❌ No |
+| **write** | Creates or modifies files. Shows a diff preview before writing. | ✅ Yes |
+| **listDirectory** | Lists a directory tree with file sizes and types. | ❌ No |
 
-## Shell
+<Tip>
+  The `read` tool is smart — give it a file path and it returns the contents. Give it a directory and it returns a listing. No need to think about which tool to use.
+</Tip>
 
-| Tool | What it does |
-|:-----|:------------|
-| `runCommand` | Executes a shell command (30-second timeout) |
+### Shell
 
-<Warning>
-  Shell commands require approval by default. Read-only commands like `ls`, `cat`, and `git status` auto-execute — NIOM uses dynamic heuristics to tell the difference.
-</Warning>
+| Tool | What it does | Needs approval? |
+|:-----|:------------|:----------------|
+| **runCommand** | Executes shell commands (`ls`, `git`, `npm`, etc.) | ✅ Always |
 
-## Web search
+Shell commands always require your approval — even in trusted mode. NIOM shows you the exact command before running it.
 
-| Tool | What it does |
-|:-----|:------------|
-| `webSearch` | Searches the web and returns structured results with titles, URLs, and snippets |
-| `fetchUrl` | Fetches a URL and extracts readable content (Mozilla Readability) |
+### Web
 
-**Search provider chain:**
-1. **DuckDuckGo** (default) — no API key needed, works immediately
-2. **Tavily** (optional upgrade) — purpose-built for AI, richer results. [Free: 1,000/month](https://tavily.com)
-3. **Brave** (optional upgrade) — fast, rich snippets. [Free: 2,000/month](https://brave.com/search/api/)
+| Tool | What it does | Needs approval? |
+|:-----|:------------|:----------------|
+| **webSearch** | Searches the web using DuckDuckGo | ❌ No |
+| **crawl** | Extracts readable content from a URL | ❌ No |
+| **fetchUrl** | Raw HTTP fetch for APIs and URLs | ❌ No |
 
-If your configured provider fails, NIOM falls back automatically. Zero-config search always works.
+### System
 
-## Research
+| Tool | What it does | Needs approval? |
+|:-----|:------------|:----------------|
+| **systemInfo** | Returns OS, CPU, memory, and environment details | ❌ No |
 
-| Tool | What it does |
-|:-----|:------------|
-| `deepResearch` | Multi-source research: multiple searches → fetch top sources → cross-reference → synthesize with citations |
+### Artifacts
 
-Deep research goes beyond a single web search. It generates multiple queries, fetches full page content from top results, and produces a comprehensive report with source citations. See the [Deep Research guide](/guides/deep-research).
+| Tool | What it does | Needs approval? |
+|:-----|:------------|:----------------|
+| **proposeArtifact** | Creates a file with a diff preview for your review | ✅ Preview |
 
-## Notifications
+## Tool approval
 
-| Tool | What it does |
-|:-----|:------------|
-| `notifyUser` | Sends a desktop notification with title, message, and urgency level |
+NIOM uses a **trust-based approval system**. When a tool needs approval:
 
-Used by the agent to alert you about completed tasks, important findings, or actions that need your attention.
+1. A **tool approval card** appears in the chat showing what the tool wants to do
+2. You click **Approve** or **Reject**
+3. If approved, the tool executes and the result appears below
 
-## System info
+### Session trust
 
-| Tool | What it does |
-|:-----|:------------|
-| `systemInfo` | Reports CPU usage, memory, disk space, platform, and uptime |
+When you approve a tool for a specific path, NIOM remembers that trust for the rest of the session:
 
-## Computer use
+- Approving `write` to `/Users/you/project/src/` trusts that tool for that path
+- Trust is **path-scoped** — approving one directory doesn't trust all directories
+- Trust is **session-scoped** — clears when you restart NIOM (30-minute TTL)
+- `runCommand` is **never auto-trusted** — every command requires explicit approval
 
-Screenshots, mouse clicks, keyboard input, scrolling — see the dedicated [Computer Use guide](/guides/computer-use).
+<Note>
+  This is a safety net, not a hindrance. After a few approvals in the same project, NIOM flows smoothly because it remembers what you've trusted.
+</Note>
 
-## MCP tools
+## Self-correction
 
-Any tools from connected MCP servers are dynamically merged with these built-in tools. The Skill Tree routes to MCP tools the same way it routes to built-in ones. See [MCP Integration](/guides/mcp).
+NIOM's agent doesn't just call tools — it **interprets results and self-corrects**. Every tool returns a structured result:
 
-## What needs your approval?
+```
+success → Continue with the data
+partial → Some results, try refining
+error   → Read the suggestions, retry with different args
+```
 
-NIOM uses a simple rule: **read-only actions run automatically, anything that changes state asks first.**
+For example, if `read("/src/index.ts")` returns "file not found", the agent might:
+1. Try `read("/src/")` to list the directory
+2. Discover the file is `index.tsx` (not `.ts`)
+3. Read the correct file automatically
 
-| Tool | Approval needed? |
-|:-----|:----------------:|
-| `readFile`, `readFileRange`, `listDirectory`, `searchFiles`, `systemInfo` | No — read-only |
-| `webSearch`, `fetchUrl`, `deepResearch` | No — read-only |
-| `writeFile`, `editFile`, `deleteFile` | **Yes** — modifies files |
-| `runCommand` | **Dynamic** — `ls` auto-runs, `rm` asks |
-| `notifyUser` | No — notification only |
-| Computer use actions | **Yes** — GUI interactions always ask |
+This happens without your intervention — up to 3 self-correction attempts per tool call.
 
-When approval is needed, NIOM shows a card in the overlay with the tool name, what it wants to do, and **Approve / Deny** buttons.
+## Adding more tools via MCP
+
+NIOM supports the **Model Context Protocol (MCP)**, which connects it to 13,000+ external tools:
+
+| MCP Server | What it adds |
+|:-----------|:-------------|
+| GitHub | Repositories, issues, PRs, commits |
+| Slack | Messages, channels, search |
+| Google Drive | Documents, sheets, files |
+| Postgres | Database queries |
+| Gmail | Email reading and composition |
+
+MCP support is a planned integration. The tool infrastructure is ready, and MCP servers will be configurable through the Settings UI.
+
+<Tip>
+  NIOM's Skill Tree automatically incorporates MCP tools into its routing graph. External tools get the same intelligent routing as built-in tools.
+</Tip>

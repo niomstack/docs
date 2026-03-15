@@ -1,111 +1,138 @@
 ---
 title: "Architecture Overview"
-description: "Two processes. One daemon. Zero bloat. Here's how NIOM is built — and why."
+description: "How NIOM is built — from the Electron shell to the agent engine, context system, and Skill Tree."
 ---
 
-NIOM has an unusual architecture: a **hybrid daemon** that splits native OS access from AI intelligence into two cooperating processes. This isn't a wrapper around an LLM — it's an OS-level intelligence layer.
+NIOM is a desktop application built on Electron that runs everything locally. There are no external services, no cloud infrastructure, and no accounts. The architecture is designed for a single user on a single machine.
 
-## The two processes
+## High-level diagram
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                           NIOM Daemon                                │
-│                                                                      │
-│  ┌─── Rust (Tauri) ──────────┐  ┌──── Node.js Sidecar ─────────────┐│
-│  │                           │  │                                   ││
-│  │  System tray icon         │  │  🌳 Skill Tree (domain routing)  ││
-│  │  Global hotkeys           │  │  🧠 Agent engine (4-tier)        ││
-│  │  Overlay window           │  │  ⚡ Background tasks (SSE)       ││
-│  │  Native notifications     │  │  🤲 Built-in tools (15+)        ││
-│  │  Sidecar lifecycle        │  │  🔍 Search (DDG/Tavily/Brave)   ││
-│  │                           │  │  🌐 MCP client (13,000+ tools)  ││
-│  │  That's it.               │  │  🖥️ Computer use                ││
-│  │  ~200 lines of Rust.      │  │  💬 SSE streaming               ││
-│  │                           │  │  📎 Artifacts system             ││
-│  │                           │  │  🧩 Long-term memory (brain)    ││
-│  │                           │  │  🩺 Self-healing                ││
-│  └───────────────────────────┘  └───────────────────────────────────┘│
-│                                                                      │
-│  ┌──── Frontend (React + Vite + Tailwind v4) ───────────────────────┐│
-│  │  Tauri IPC → Rust (OS-native only)                               ││
-│  │  HTTP/SSE  → Node.js (everything else)                           ││
-│  └──────────────────────────────────────────────────────────────────┘│
-└──────────────────────────────────────────────────────────────────────┘
-```
+```mermaid
+graph TD
+    subgraph "NIOM Desktop (Electron)"
+        R["Renderer / React UI<br/>(Chat, Home, Settings, Tasks)"]
+        M["Main Process<br/>(Agent Engine, Tools, Memory)"]
+        P["Preload Bridge<br/>(IPC Abstraction)"]
+    end
 
-## Why split it this way?
+    subgraph "Local Runtime"
+        AE["Agent Engine<br/>(AI SDK v6 — ToolLoopAgent)"]
+        SR["Skill Router<br/>(Embedding → Cosine Sim → Domain)"]
+        MEM["Context Engine<br/>(NCF — Tiered Memory)"]
+        TQ["Task Runner<br/>(Background Execution)"]
+        TE["Tool Executor<br/>(Sandboxed Dispatch)"]
+    end
 
-An earlier version of NIOM kept everything in Rust. It was 2,800 lines across 5 crates — and couldn't match what Node.js does in 120 lines:
+    subgraph "External"
+        OS["Local FS / Shell"]
+        LLM["Model Providers<br/>(Claude, GPT, Gemini, Ollama)"]
+    end
 
-| Task | Rust (before) | Node.js (now) |
-|:-----|:---:|:---:|
-| File read/write | 60 lines | 2 lines |
-| Shell execution | 40 lines | 3 lines |
-| Web search | 105 lines (and broken) | 3 lines |
-| Intent classification | 440 lines | 15 lines |
-| Agent loop | 891 lines | 30 lines |
-| Model manager | 597 lines | 1 line |
-| **Total** | **~2,800 lines** | **~120 lines** |
-
-The TypeScript AI ecosystem (Vercel AI SDK, MCP SDK, etc.) is **10-100x more mature** than Rust for this. Moving intelligence to Node.js and keeping only OS-native operations in Rust gives the best of both worlds.
-
-## System layers
-
-NIOM's intelligence operates through multiple interconnected layers:
-
-### Layer 1: Skill Tree (routing)
-
-Every request enters through the [Skill Tree](/architecture/skill-tree) — a graph of tools organized by domain. It classifies your intent, selects the right 4-8 tools (from 15+ available), and determines execution mode (direct, background task, or scheduled).
-
-```
-User message → Domain classification → Skill Pack → Tool subset → Execution mode
+    R <--> |IPC via Preload| P
+    P <--> M
+    M --> AE
+    AE --> SR
+    AE <--> MEM
+    AE --> TE
+    AE --> TQ
+    TE <--> OS
+    AE <--> |API Keys| LLM
 ```
 
-The Skill Tree is what makes NIOM different from a generic agent. Instead of dumping all tools into the prompt, it routes intelligently. See the [Skill Tree architecture](/architecture/skill-tree) deep-dive.
+## Two processes
 
-### Layer 2: Agent engine (execution)
+| Process | Stack | Responsibilities |
+|:--------|:------|:----------------|
+| **Main** | Node.js 22, AI SDK v6 | Agent engine, tool execution, memory, Skill Tree, task orchestration, OS integration (tray, hotkey, notifications) |
+| **Renderer** | React 19, Tailwind v4, shadcn/ui | Chat UI, thread management, settings, task panel, context graph visualization |
 
-The agent pipeline takes the Skill Tree's output and executes with adaptive depth:
+Communication between them happens over **Electron IPC** via a typed preload bridge (`window.niom`).
+
+## Core components
+
+### Agent Engine
+
+The brain of NIOM. Uses AI SDK v6's `ToolLoopAgent` — not raw `streamText`. The agent:
+
+1. Receives a user message
+2. Calls `prepareCall` to route via the Skill Tree and inject context
+3. Executes a tool loop (up to N steps with `stopWhen: stepCountIs(N)`)
+4. Streams results to the renderer via `toUIMessageStream()`
+
+### Skill Router
+
+A hierarchical DAG that selects the right tools for each query in ~2ms. See [Skill Tree Architecture](/architecture/skill-tree) for the deep dive.
+
+### Context Engine (NCF)
+
+The NIOM Context Filesystem — a tiered memory system inspired by OpenViking. See [Context Engine Architecture](/architecture/context-engine) for details.
+
+### Task Runner
+
+A state machine that coordinates multi-phase background work. See [Task System Architecture](/architecture/task-system) for the full breakdown.
+
+### Tool Executor
+
+Sandboxed tool dispatch with a trust-based approval system. Tools return structured `SkillResult<T>` envelopes that enable agent self-correction.
+
+## Data flow — a chat message
+
+Here's what happens when you type "What files are in my project?" and press Enter:
+
+```mermaid
+sequenceDiagram
+    participant U as User (Renderer)
+    participant T as ElectronChatTransport
+    participant IPC as Preload Bridge (IPC)
+    participant A as Agent Engine (Main)
+    participant SR as Skill Router
+    participant MEM as Context Engine
+    participant Tool as listDirectory Tool
+
+    U->>T: sendMessage("What files are in my project?")
+    T->>IPC: chat:stream { messages, model, threadId }
+    IPC->>A: agent.stream()
+    A->>SR: resolve SkillPath for query
+    SR-->>A: tools: [read, listDirectory], domain: OS
+    A->>MEM: retrieve relevant context
+    MEM-->>A: project context (tech stack, conventions)
+    A->>A: prepareCall() — inject tools + context + prompt
+    A->>Tool: listDirectory({ path: "~/project" })
+    Tool-->>A: SkillResult { status: "success", data: [...files] }
+    A->>IPC: toUIMessageStream() chunks
+    IPC->>T: chat:part events
+    T->>U: stream rendered in chat
+    A->>MEM: extract any new memories (async, post-response)
+```
+
+## Tech stack
+
+| Layer | Technology | Why |
+|:------|:----------|:----|
+| Desktop | Electron 34 + Electron Forge | OS integration — tray, hotkeys, frameless windows |
+| Frontend | React 19, Tailwind v4, shadcn/ui | Modern component system, dark/light themes |
+| AI | Vercel AI SDK v6 | Multi-provider, streaming, tool calling, model-agnostic |
+| Embeddings | `@huggingface/transformers` (ONNX) | On-device `all-MiniLM-L6-v2`, ~5ms per query |
+| Context | JSON files + tiered loading | No external DB, portable, inspectable |
+| Tasks | JSON file queue + checkpoints | Crash-safe, resumable |
+| Visualization | React Flow | Interactive context graph and Skill Tree viewer |
+
+## Package boundaries
 
 ```
-Analyze → Route by complexity → Execute with tools → Evaluate quality → Respond (or refine)
+src/
+├── main/                    # Electron main process (Node.js)
+│   ├── agent.ts             # ToolLoopAgent factory
+│   ├── ipc/                 # IPC handlers — thin wrappers
+│   ├── tools/               # AI SDK tool definitions
+│   ├── services/            # Business logic (config, chat, threads)
+│   ├── skills/              # Skill graph, embeddings, routing, edge learning
+│   ├── context/             # NCF — memory, retrieval, sessions, projects
+│   └── tasks/               # Task runner, store, digest
+├── transport/               # ChatTransport (Electron IPC bridge)
+├── hooks/                   # React hooks (useNiomChat, useTaskManager)
+├── components/              # React UI components
+│   └── views/               # Page-level views (Home, Chat, Settings)
+├── shared/                  # Types shared between main + renderer
+└── types/                   # TypeScript declarations
 ```
-
-For complex tasks, evaluation creates a refinement loop (up to 3 rounds). For simple queries, the pipeline is nearly instant. See the [Agent Engine guide](/guides/agent-engine).
-
-### Layer 3: Artifacts + memory (persistence)
-
-Everything the agent produces is tracked:
-- **Artifacts** — files created during execution are auto-registered and linked to conversations/tasks. See [Artifacts](/guides/artifacts).
-- **Brain memory** — facts, preferences, and patterns extracted from conversations. Injected into every future interaction. See [Memory](/guides/memory).
-- **Task memory** — per-task execution history, steering comments, and tool results. Makes each run smarter than the last.
-
-### Layer 4: SSE event system (streaming)
-
-Both conversations and tasks stream their progress via Server-Sent Events:
-- **Conversations** — AI SDK UIMessageStream protocol (text deltas, tool calls, reasoning)
-- **Tasks** — custom event types: `task:start`, `task:tool`, `task:phase`, `task:complete`, `task:error`
-
-The frontend builds its state directly from SSE events — no polling. See [Task Events API](/api-reference/tasks/events).
-
-## Data flow
-
-Here's what happens when you type something in the overlay:
-
-```
-You type in the overlay
-  → HTTP POST /run → Node.js sidecar
-    → Skill Tree routes to domain + selects tools (~200ms)
-    → Agent executes with selected tools (capable model)
-    → Artifacts auto-registered if files created
-    → Brain extracts facts asynchronously after save
-    → SSE streams response back to the overlay
-```
-
-OS-level operations (hotkeys, tray, notifications) go through **Tauri IPC** → Rust. Everything else goes through **HTTP** → Node.js. Clean separation.
-
-## Privacy
-
-<Note>
-  **Local-first is non-negotiable.** All data lives on your machine at `~/.niom/`. Zero telemetry. Zero analytics. The only network calls are to your chosen LLM provider — and even that's optional (Ollama works fully offline).
-</Note>

@@ -1,39 +1,33 @@
 ---
 title: "Quickstart"
-description: "Go from zero to your first NIOM query in under 5 minutes."
+description: "Download NIOM, add your API key, and start chatting — in under 2 minutes."
 ---
 
 ## What you'll need
 
 <Info>
   **Before you start:**
-  - **Windows 10/11**, **macOS 12+**, or **Linux** (Ubuntu 22.04+, Fedora 38+, Arch)
-  - An API key from any supported provider — [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), [Google](https://aistudio.google.com), or [Groq](https://console.groq.com)
+  - **macOS 12+**, **Windows 10/11**, or **Linux** (Ubuntu 22.04+, Fedora 38+)
+  - An API key from any supported provider — or [Ollama](https://ollama.ai) for fully offline use
 </Info>
 
 ## Install and run
 
 <Steps>
-<Step title="Install NIOM">
+<Step title="Download NIOM">
 
   <Tabs>
     <Tab title="macOS">
-      **Homebrew:**
-      ```bash
-      brew tap niomstack/niom https://github.com/niomstack/niom
-      brew install --cask niom
-      ```
+      Download the `.dmg` from [GitHub Releases](https://github.com/niomstack/niom/releases).
 
-      Or download the `.dmg` from [GitHub Releases](https://github.com/niomstack/niom/releases).
+      Open the DMG and drag NIOM to your Applications folder.
+
+      <Tip>NIOM supports both Intel (x64) and Apple Silicon (arm64) Macs.</Tip>
     </Tab>
     <Tab title="Windows">
-      **Scoop:**
-      ```powershell
-      scoop bucket add niom https://github.com/niomstack/niom
-      scoop install niom
-      ```
+      Download the `.exe` installer from [GitHub Releases](https://github.com/niomstack/niom/releases).
 
-      Or download the `.exe` installer from [GitHub Releases](https://github.com/niomstack/niom/releases).
+      Run the installer — it handles everything. NIOM will appear in your system tray.
     </Tab>
     <Tab title="Linux">
       Download from [GitHub Releases](https://github.com/niomstack/niom/releases):
@@ -42,119 +36,97 @@ description: "Go from zero to your first NIOM query in under 5 minutes."
       # Debian/Ubuntu
       sudo dpkg -i niom_*.deb
 
-      # Any distro (AppImage)
-      chmod +x niom_*.AppImage
-      ./niom_*.AppImage
+      # Fedora/RHEL
+      sudo rpm -i niom_*.rpm
       ```
     </Tab>
     <Tab title="From Source">
       ```bash
       git clone https://github.com/niomstack/niom.git
       cd niom
-      pnpm install
-      pnpm --filter niom-ai install
-      pnpm tauri dev
+      npm install
+      npm start
       ```
 
-      **Requirements:** Node.js 22+, Rust 1.75+, pnpm 9+
+      **Requirements:** Node.js 22+, npm 10+
     </Tab>
   </Tabs>
 </Step>
 
-<Step title="Start NIOM">
-  Launch NIOM from your Applications folder, Start Menu, or app launcher. It runs in your **system tray**.
+<Step title="First launch — the onboarding wizard">
+  When you launch NIOM for the first time, a **4-step onboarding wizard** guides you through setup:
 
-  <Tip>Building from source? Run `pnpm tauri dev` to start all three services at once.</Tip>
-</Step>
-
-<Step title="Connect your AI provider">
-  Press **Ctrl+Space** to open the overlay, then go to **Settings** and select your provider + enter your API key.
-
-  NIOM supports:
-  - **Anthropic** (Claude) — recommended for best tool-use performance
-  - **OpenAI** (GPT-4o, o1, etc.)
-  - **Google** (Gemini)
-  - **Groq** (fast, free tier available)
-  - **Ollama** (fully offline, no API key needed)
+  1. **Welcome** — Quick overview of what NIOM can do
+  2. **Connect a provider** — Enter your API key inline (Anthropic, OpenAI, or Google)
+  3. **Feature tour** — Learn about memory, tasks, routing, and the `⌥ Space` hotkey
+  4. **Ready** — Starter prompt suggestions to try
 
   <Tip>
-    Don't want to use cloud AI? NIOM works fully offline with [Ollama](https://ollama.ai). Just set the provider to `ollama` and choose a local model. No API key required.
+    You can skip the API key step during onboarding and add it later via Settings. If you're running Ollama locally, NIOM detects it automatically — no key needed.
   </Tip>
 </Step>
 
-<Step title="Try it out">
-  Press **Ctrl+Space** and type something. Here are a few ideas:
+<Step title="Start chatting">
+  After onboarding, you land on the **Home screen**. Type your first message in the prompt box.
+
+  Here are some things to try:
 
   | Try saying... | What happens |
   |:-------------|:------------|
-  | "What files are in my project?" | Reads your directory structure |
-  | "Search for the latest AI research" | Runs a web search and summarizes results |
-  | "Research quantum computing deeply" | Multi-source deep research with citations |
-  | "Write a summary of AI trends every 2 days" | Creates a scheduled background task |
-  | "Take a screenshot and describe it" | Captures your screen and uses vision AI |
+  | "What files are in ~/projects?" | Lists your directory structure |
+  | "Search for the latest AI breakthroughs" | Runs a web search and summarizes results |
+  | "Remember that I prefer dark mode and TypeScript" | Saves this to persistent memory |
+  | "Help me refactor this React component" | Reads your code, suggests improvements, writes changes |
+  | "Research competitor pricing and write a report" | Creates a background task with checkpoints |
 
-  NIOM's [Skill Tree](/guides/skill-tree) analyzes your request, selects the right tools, and streams a response — all in the overlay.
+  NIOM's [Skill Tree](/guides/skill-routing) analyzes your request, selects the right tools (from 20+ available), and streams a response.
 </Step>
 </Steps>
 
-## Make sure it's working
+## The global hotkey
 
-Check that the sidecar is healthy:
+Press **`⌥ Space`** (Option + Space) from **any application** to summon NIOM instantly. It appears as a floating window — type your question, get your answer, and dismiss.
 
-```bash
-curl http://localhost:3001/health
-```
-
-You should see:
-```json
-{
-  "status": "ok",
-  "uptime_ms": 12345,
-  "version": "0.1.0"
-}
-```
-
-<Warning>
-  If you get `connection refused`, the sidecar hasn't started yet. Wait a few seconds after launch — it boots asynchronously.
-</Warning>
-
-## Your config file
-
-Everything lives in one place: `~/.niom/config.json`. No `.env` files, no scattered secrets.
-
-```json
-{
-  "workspace": "C:\\Users\\you",
-  "provider": "anthropic",
-  "model": "anthropic/claude-4-sonnet-20250514",
-  "anthropic_api_key": "sk-ant-...",
-  "sidecar_port": 3001,
-  "models": {
-    "fast": "groq/llama-3.3-70b-versatile",
-    "vision": "openai/gpt-4o"
-  }
-}
-```
-
-**That's it.** Web search works out of the box (DuckDuckGo, no API key). Artifacts save to `~/.niom/artifacts/` by default. The [Skill Tree](/guides/skill-tree) builds itself as you use NIOM.
+This is where the magic happens. NIOM becomes your ambient AI layer — always one keystroke away.
 
 <Tip>
-  See the [Configuration reference](/configuration) for every option explained.
+  NIOM also lives in your **system tray** (menubar on macOS). Right-click the tray icon for quick actions.
 </Tip>
+
+## Your data
+
+Everything NIOM stores lives in one place:
+
+```
+~/.niom/
+├── config.json       # Your settings (providers, model, theme)
+├── keys.enc          # API keys (encrypted via OS keychain)
+├── threads/          # Conversation history
+├── context/          # Memory — facts, preferences, project data
+│   ├── user/         # What NIOM knows about you
+│   └── projects/     # Workspace analysis (tech stacks, conventions)
+├── tasks/            # Background task state and history
+├── logs/             # Tool execution logs
+└── skill-graph.json  # Learned tool co-occurrence patterns
+```
+
+<Note>
+  API keys are encrypted using your operating system's secure storage (macOS Keychain, Windows DPAPI, Linux Secret Service). They never leave your machine in plaintext.
+</Note>
 
 ## What to explore next
 
 <CardGroup cols={2}>
-  <Card title="Skill Tree routing" icon="brain" href="/guides/skill-tree">
-    How NIOM picks the right tools for every request — and gets smarter over time.
+  <Card title="Memory system" icon="brain" href="/guides/memory">
+    How NIOM extracts and remembers facts from every conversation.
   </Card>
   <Card title="Background tasks" icon="bolt" href="/guides/background-tasks">
-    Set up autonomous tasks that stream progress live and save artifacts.
+    Dispatch autonomous multi-step tasks that run while you chat.
   </Card>
-  <Card title="Connect tools via MCP" icon="plug" href="/guides/mcp">
-    Add GitHub, Slack, Google Drive, and thousands more with one config line.
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Providers, models, Ollama, and theme settings.
   </Card>
-  <Card title="Full API reference" icon="code" href="/api-reference/introduction">
-    Build on top of NIOM's HTTP + SSE API.
+  <Card title="Built-in tools" icon="wrench" href="/guides/tools">
+    Every tool NIOM ships with — files, shell, search, crawl, and more.
   </Card>
 </CardGroup>
